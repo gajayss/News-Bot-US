@@ -99,7 +99,7 @@ AXES: dict[str, AxisProfile] = {
     "FEDWALL": AxisProfile(
         axis_id="FEDWALL",
         axis_name_kr="FOMC/월가 기관",
-        event_types=["FED", "FOMC", "FED_SPEAK"],
+        event_types=["FED", "FOMC", "FED_SPEAK", "RATES", "BANKS_FINANCE"],
         speed="FAST",
         fear_eligible=True,
         sl_modifier=0.70,       # FOMC 후 방향 빠르게 결정
@@ -113,7 +113,8 @@ AXES: dict[str, AxisProfile] = {
         axis_id="THEME",
         axis_name_kr="테마/신기술",
         event_types=["NUCLEAR", "QUANTUM", "SPACE_DEFENSE", "ROBOTICS",
-                     "EV", "BIOTECH", "ENERGY_INFRA", "DATA_CENTER", "AI_TECH"],
+                     "EV", "BIOTECH", "CYBERSECURITY", "SOFTWARE_CLOUD",
+                     "CRYPTO", "ENERGY_INFRA", "DATA_CENTER", "AI_TECH"],
         speed="MEDIUM",
         fear_eligible=False,    # 테마는 공포가 아니라 모멘텀
         sl_modifier=0.85,       # 테마주는 변동성 크지만 추세 길다
@@ -156,7 +157,12 @@ EVENT_TYPE_KEYWORDS: dict[str, list[str]] = {
     "RETAIL":     ["retail sales"],
     "COMMODITY":  ["opec", "crude oil", "oil price", "natural gas price",
                    "wti", "brent", "oil surge", "oil drop", "oil jumps",
-                   "oil falls", "lng export", "oil production"],
+                   "oil falls", "lng export", "oil production",
+                   "gold price", "gold surge", "gold rally", "gold drops",
+                   "silver price", "silver surge", "silver rally",
+                   "precious metal", "bullion", "gold futures", "silver futures",
+                   "rare earth", "lithium", "cobalt", "copper price",
+                   "commodity price", "iron ore", "palladium", "platinum"],
     # 축2: CORPORATE
     "EARNINGS":   ["earnings", "guidance", "quarter", "revenue", "eps",
                    "beats", "misses", "supply chain", "quarterly results"],
@@ -170,7 +176,7 @@ EVENT_TYPE_KEYWORDS: dict[str, list[str]] = {
                      "red sea", "hormuz", "sanctions", "north korea", "china",
                      "taiwan", "ukraine", "russia"],
     "REGULATION":   ["probe", "lawsuit", "antitrust", "tariff", "restriction",
-                     "ban", "banning", "executive order", "indictment"],
+                     " ban ", "bans ", "banning", "executive order", "indictment"],
     "TRUMP":        ["trump", "truth social", "mar-a-lago", "maga",
                      "white house", "president signs", "president threatens"],
     # 축4: FEDWALL
@@ -182,6 +188,11 @@ EVENT_TYPE_KEYWORDS: dict[str, list[str]] = {
                      "testimony", "hawkish", "dovish"],
     "FOMC":         ["fomc minutes", "fomc meeting", "fomc decision",
                      "interest rate decision", "dot plot"],
+    "RATES":        ["treasury yield", "10-year yield", "10 year yield",
+                     "us10y", "bond yield", "yield surge", "yield spike",
+                     "mortgage rate", "30-year mortgage", "housing rate",
+                     "yield curve", "inverted yield", "2-year yield",
+                     "treasury bond", "bond market"],
     # 축5: THEME (테마/신기술)
     "AI_TECH":      ["artificial intelligence", " ai ", "chatgpt", "openai",
                      "generative ai", "large language model", "llm", "gpu demand",
@@ -211,6 +222,18 @@ EVENT_TYPE_KEYWORDS: dict[str, list[str]] = {
     "BIOTECH":      ["biotech", "gene therapy", "crispr", "mrna", "fda approval",
                      "clinical trial", "drug approval", "pharma breakthrough",
                      "weight loss drug", "glp-1", "ozempic"],
+    "CYBERSECURITY": ["cybersecurity", "cyber attack", "ransomware", "data breach",
+                      "hack ", "hacker", "crowdstrike", "palo alto networks",
+                      "zscaler", "zero trust", "endpoint security"],
+    "SOFTWARE_CLOUD": ["cloud computing", "saas", "cloud revenue", "azure",
+                       "aws ", "google cloud", "cloud migration",
+                       "software subscription", "servicenow", "salesforce"],
+    "CRYPTO":       ["bitcoin", "crypto", "ethereum", "blockchain", "coinbase",
+                     "microstrategy", "digital asset", "defi", "stablecoin",
+                     "crypto regulation", "sec crypto"],
+    "BANKS_FINANCE": ["bank earnings", "banking sector", "jpmorgan", "goldman sachs",
+                      "bank of america", "credit loss", "loan growth",
+                      "net interest", "financial sector"],
 }
 
 # Event type → Axis lookup

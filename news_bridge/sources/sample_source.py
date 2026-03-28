@@ -156,4 +156,29 @@ def fetch_sample_news() -> list[dict[str, Any]]:
             "url": "",
             "datetime": "2026-03-28T12:17:00Z",
         },
+        # --- 축1: ECONOMY/COMMODITY (원자재/귀금속/희토류) ---
+        {
+            "id": "sample-19",
+            "source": "sample",
+            "headline": "Gold price surges to record high as inflation fears drive precious metal rally",
+            "summary": "Gold futures break $2,500. Bullion demand soars as central banks increase gold reserves. Silver also rallies.",
+            "url": "",
+            "datetime": "2026-03-28T12:18:00Z",
+        },
+        {
+            "id": "sample-20",
+            "source": "sample",
+            "headline": "Rare earth and lithium prices surge on supply shortage and EV battery demand",
+            "summary": "Rare earth minerals jump on supply disruption. Lithium prices rise as EV production accelerates globally. Copper price also climbs.",
+            "url": "",
+            "datetime": "2026-03-28T12:19:00Z",
+        },
+        {
+            "id": "sample-21",
+            "source": "sample",
+            "headline": "Treasury yield surges past 5% as 10-year yield hits highest since 2007",
+            "summary": "Bond yield spike pressures stocks. 30-year mortgage rate tops 8%. Bond market selloff accelerates.",
+            "url": "",
+            "datetime": "2026-03-28T12:20:00Z",
+        },
     ]

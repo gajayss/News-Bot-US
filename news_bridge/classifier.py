@@ -29,39 +29,52 @@ EVENT_RULES = {
                    "executive order"],
 }
 SYMBOL_ALIASES = {
-    "nvidia": "NVDA",
-    "tesla": "TSLA",
-    "apple": "AAPL",
-    "microsoft": "MSFT",
-    "amazon": "AMZN",
-    "meta": "META",
-    "amd": "AMD",
-    "qqq": "QQQ",
-    "spy": "SPY",
-    "nasdaq": "TQQQ",
-    "oil": "USO",
-    "crude": "USO",
-    "energy": "XLE",
-    "lockheed": "LMT",
-    "raytheon": "RTX",
-    "defense": "ITA",
-    "natural gas": "UNG",
-    "gas": "BOIL",
-    "semiconductor": "SOXL",
-    "chip": "SOXL",
-    "chips": "SOXL",
-    "gpu": "SOXL",
-    # THEME aliases
-    "quantum": "IONQ",
-    "ionq": "IONQ",
-    "uranium": "UEC",
-    "nuclear": "UEC",
-    "cameco": "CCJ",
-    "robotics": "BOTZ",
-    "robot": "BOTZ",
-    "biotech": "XBI",
-    "glp-1": "NVO",
-    "ozempic": "NVO",
+    # --- 대형 개별 종목 ---
+    "nvidia": "NVDA", "tesla": "TSLA", "apple": "AAPL",
+    "microsoft": "MSFT", "amazon": "AMZN", "meta": "META",
+    "amd": "AMD", "broadcom": "AVGO", "micron": "MU",
+    "google": "GOOGL", "alphabet": "GOOGL", "netflix": "NFLX",
+    "disney": "DIS", "salesforce": "CRM", "servicenow": "NOW",
+    "crowdstrike": "CRWD", "palo alto": "PANW", "zscaler": "ZS",
+    # --- 에너지 ---
+    "exxon": "XOM", "chevron": "CVX", "occidental": "OXY",
+    "conocophillips": "COP", "oil": "USO", "crude": "USO",
+    "energy": "XLE", "natural gas": "UNG", "gas": "BOIL",
+    # --- 방산/우주 ---
+    "lockheed": "LMT", "northrop": "NOC", "raytheon": "RTX",
+    "defense": "ITA", "rocket lab": "RKLB", "l3harris": "LHX",
+    # --- 금융 ---
+    "jpmorgan": "JPM", "bank of america": "BAC", "goldman": "GS",
+    # --- 원전/전력 ---
+    "nuclear": "SMR", "smr": "SMR", "oklo": "OKLO", "cameco": "CCJ",
+    "uranium": "URA", "power grid": "VRT", "vertiv": "VRT",
+    # --- 반도체/기술 ETF ---
+    "semiconductor": "SOXL", "chip": "SOXL", "chips": "SOXL",
+    "gpu": "SOXL", "nasdaq": "TQQQ", "qqq": "QQQ", "spy": "SPY",
+    # --- 금리/채권 ---
+    "treasury": "TLT", "bond yield": "TLT", "mortgage rate": "TLT",
+    # --- 원자재/귀금속/희토류 ---
+    "gold": "GLD", "bullion": "GLD", "gold miner": "NUGT",
+    "silver": "SLV", "rare earth": "REMX", "lithium": "LIT",
+    "copper": "COPX", "freeport": "FCX",
+    # --- 바이오/제약 ---
+    "biotech": "XBI", "glp-1": "NVO", "ozempic": "NVO",
+    "eli lilly": "LLY", "moderna": "MRNA", "vertex": "VRTX",
+    "regeneron": "REGN",
+    # --- EV ---
+    "electric vehicle": "TSLA", "ev battery": "TSLA",
+    # --- 크립토 ---
+    "bitcoin": "COIN", "crypto": "COIN", "coinbase": "COIN",
+    "microstrategy": "MSTR",
+    # --- 로봇/자동화 ---
+    "robotics": "BOTZ", "robot": "BOTZ", "humanoid": "BOTZ",
+    # --- 양자컴 ---
+    "quantum": "IONQ", "ionq": "IONQ",
+    # --- 데이터센터/리츠 ---
+    "data center": "EQIX", "equinix": "EQIX", "digital realty": "DLR",
+    "reit": "PLD",
+    # --- 필수소비재 ---
+    "procter": "PG", "coca-cola": "KO", "pepsi": "PEP", "walmart": "WMT",
 }
 
 
