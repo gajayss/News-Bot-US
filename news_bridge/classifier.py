@@ -29,40 +29,73 @@ EVENT_RULES = {
                    "executive order"],
 }
 SYMBOL_ALIASES = {
-    # --- 대형 개별 종목 ---
-    "nvidia": "NVDA", "tesla": "TSLA", "apple": "AAPL",
-    "microsoft": "MSFT", "amazon": "AMZN", "meta": "META",
-    "amd": "AMD", "broadcom": "AVGO", "micron": "MU",
-    "google": "GOOGL", "alphabet": "GOOGL", "netflix": "NFLX",
-    "disney": "DIS", "salesforce": "CRM", "servicenow": "NOW",
+    # --- CHIPS (반도체) ---
+    "nvidia": "NVDA", "amd": "AMD", "broadcom": "AVGO", "micron": "MU",
+    "qualcomm": "QCOM", "intel": "INTC", "texas instruments": "TXN",
+    "analog devices": "ADI", "applied materials": "AMAT", "lam research": "LRCX",
+    "kla": "KLAC", "nxp": "NXPI", "monolithic": "MPWR",
+    "semiconductor": "SOXL", "chip": "SOXL", "chips": "SOXL", "gpu": "SOXL",
+    # --- SOFTWARE ---
+    "microsoft": "MSFT", "salesforce": "CRM", "servicenow": "NOW",
+    "workday": "WDAY", "palantir": "PLTR", "adobe": "ADSK",
     "crowdstrike": "CRWD", "palo alto": "PANW", "zscaler": "ZS",
-    # --- 에너지 ---
+    "fortinet": "FTNT",
+    # --- INTERNET/TELECOM ---
+    "google": "GOOGL", "alphabet": "GOOGL", "meta": "META",
+    "netflix": "NFLX", "disney": "DIS",
+    "apple": "AAPL", "verizon": "VZ", "at&t": "T", "t-mobile": "TMUS",
+    # --- RETAIL ---
+    "amazon": "AMZN", "walmart": "WMT", "costco": "COST", "target": "TGT",
+    "home depot": "HD", "lowe's": "LOW", "starbucks": "SBUX",
+    "mcdonald": "MCD",
+    # --- MEDICAL/제약/바이오 ---
+    "eli lilly": "LLY", "johnson & johnson": "JNJ", "abbvie": "ABBV",
+    "pfizer": "PFE", "merck": "MRK", "amgen": "AMGN", "gilead": "GILD",
+    "unitedhealth": "UNH", "abbott": "ABT", "danaher": "DHR",
+    "intuitive surgical": "ISRG", "stryker": "SYK", "medtronic": "MDT",
+    "vertex": "VRTX", "regeneron": "REGN", "moderna": "MRNA",
+    "biotech": "XBI", "glp-1": "NVO", "ozempic": "NVO",
+    # --- ENERGY (에너지) ---
     "exxon": "XOM", "chevron": "CVX", "occidental": "OXY",
-    "conocophillips": "COP", "oil": "USO", "crude": "USO",
-    "energy": "XLE", "natural gas": "UNG", "gas": "BOIL",
-    # --- 방산/우주 ---
+    "conocophillips": "COP", "eog": "EOG", "devon": "DVN",
+    "schlumberger": "SLB", "halliburton": "HAL",
+    "oil": "USO", "crude": "USO", "energy": "XLE",
+    "natural gas": "UNG", "gas": "BOIL",
+    # --- AEROSPACE/DEFENSE (항공우주/방산) ---
+    "boeing": "BA", "general electric": "GE", "general dynamics": "GD",
     "lockheed": "LMT", "northrop": "NOC", "raytheon": "RTX",
-    "defense": "ITA", "rocket lab": "RKLB", "l3harris": "LHX",
-    # --- 금융 ---
+    "l3harris": "LHX", "transdigm": "TDG", "howmet": "HWM",
+    "defense": "ITA", "rocket lab": "RKLB",
+    # --- BANKS/FINANCE (금융) ---
     "jpmorgan": "JPM", "bank of america": "BAC", "goldman": "GS",
-    # --- 원전/전력 ---
+    "morgan stanley": "MS", "wells fargo": "WFC", "citigroup": "C",
+    "visa": "V", "mastercard": "MA", "american express": "AXP",
+    "blackrock": "BLK", "kkr": "KKR", "apollo": "APO",
+    "blackstone": "BX", "schwab": "SCHW",
+    "cme group": "CME", "intercontinental": "ICE",
+    # --- INSURANCE (보험) ---
+    "chubb": "CB", "travelers": "TRV", "allstate": "ALL",
+    "aon": "AON", "marsh": "AJG", "progressive": "PGR",
+    # --- AUTO (자동차) ---
+    "tesla": "TSLA", "general motors": "GM", "ford": "F", "paccar": "PCAR",
+    "electric vehicle": "TSLA", "ev battery": "TSLA",
+    # --- LEISURE (레저/여행) ---
+    "uber": "UBER", "royal caribbean": "RCL",
+    "booking": "BKNG", "marriott": "MAR", "hilton": "HLT",
+    # --- MACHINE/INDUSTRIAL (산업재) ---
+    "parker hannifin": "PH", "illinois tool": "ITW", "eaton": "ETN",
+    "rockwell": "ROK", "hubbell": "HUBB", "caterpillar": "CAT",
+    "deere": "DE", "honeywell": "HON",
+    # --- UTILITY/원전/전력 ---
+    "nextera": "NEE", "duke energy": "DUK", "southern company": "SO",
     "nuclear": "SMR", "smr": "SMR", "oklo": "OKLO", "cameco": "CCJ",
     "uranium": "URA", "power grid": "VRT", "vertiv": "VRT",
-    # --- 반도체/기술 ETF ---
-    "semiconductor": "SOXL", "chip": "SOXL", "chips": "SOXL",
-    "gpu": "SOXL", "nasdaq": "TQQQ", "qqq": "QQQ", "spy": "SPY",
     # --- 금리/채권 ---
     "treasury": "TLT", "bond yield": "TLT", "mortgage rate": "TLT",
     # --- 원자재/귀금속/희토류 ---
     "gold": "GLD", "bullion": "GLD", "gold miner": "NUGT",
     "silver": "SLV", "rare earth": "REMX", "lithium": "LIT",
-    "copper": "COPX", "freeport": "FCX",
-    # --- 바이오/제약 ---
-    "biotech": "XBI", "glp-1": "NVO", "ozempic": "NVO",
-    "eli lilly": "LLY", "moderna": "MRNA", "vertex": "VRTX",
-    "regeneron": "REGN",
-    # --- EV ---
-    "electric vehicle": "TSLA", "ev battery": "TSLA",
+    "copper": "COPX", "freeport": "FCX", "nucor": "NUE",
     # --- 크립토 ---
     "bitcoin": "COIN", "crypto": "COIN", "coinbase": "COIN",
     "microstrategy": "MSTR",
@@ -72,9 +105,11 @@ SYMBOL_ALIASES = {
     "quantum": "IONQ", "ionq": "IONQ",
     # --- 데이터센터/리츠 ---
     "data center": "EQIX", "equinix": "EQIX", "digital realty": "DLR",
-    "reit": "PLD",
-    # --- 필수소비재 ---
-    "procter": "PG", "coca-cola": "KO", "pepsi": "PEP", "walmart": "WMT",
+    "reit": "PLD", "prologis": "PLD", "american tower": "AMT",
+    # --- 필수소비재/소비재 ---
+    "procter": "PG", "coca-cola": "KO", "pepsi": "PEP",
+    # --- 인덱스 ETF ---
+    "nasdaq": "TQQQ", "qqq": "QQQ", "spy": "SPY",
 }
 
 
