@@ -11,11 +11,18 @@ NEG_WORDS = {
     "ban", "war", "missile", "attack", "strikes", "downgrade", "fraud", "recall", "weak", "warns",
     "warning", "delay", "fears", "conflict", "disruption", "slam", "flee", "crash", "plunge", "threat",
     "threatens", "banning",
+    # 공매도/헤지펀드 약세 키워드
+    "short", "shorts", "shorting", "shorted", "overvalued", "inflated", "dilution",
+    "exits", "trims", "closes", "sells", "dumps", "bearish",
+    "sold", "dumped", "exited", "trimmed", "unloaded", "liquidated",
+    "selling", "insider",
 }
 POS_WORDS = {
     "beat", "beats", "surge", "surges", "jumps", "jump", "raises", "raise", "approval", "wins",
     "record", "guidance", "growth", "upgrades", "upgrade", "partnership", "rally", "soars",
     "accelerates", "spending", "contracts",
+    # 공매도 스퀴즈/매수 키워드
+    "squeeze", "builds", "increases", "buys", "bullish", "accumulates",
 }
 EVENT_RULES = {
     "GEOPOLITICAL": ["iran", "missile", "war", "attack", "israel", "strait", "trump", "middle east",
@@ -38,6 +45,7 @@ SYMBOL_ALIASES = {
     # --- SOFTWARE ---
     "microsoft": "MSFT", "salesforce": "CRM", "servicenow": "NOW",
     "workday": "WDAY", "palantir": "PLTR", "adobe": "ADSK",
+    "super micro": "SMCI", "supermicro": "SMCI", "smci": "SMCI",
     "crowdstrike": "CRWD", "palo alto": "PANW", "zscaler": "ZS",
     "fortinet": "FTNT",
     # --- INTERNET/TELECOM ---
@@ -45,7 +53,7 @@ SYMBOL_ALIASES = {
     "netflix": "NFLX", "disney": "DIS",
     "apple": "AAPL", "verizon": "VZ", "at&t": "T", "t-mobile": "TMUS",
     # --- RETAIL ---
-    "amazon": "AMZN", "walmart": "WMT", "costco": "COST", "target": "TGT",
+    "amazon": "AMZN", "walmart": "WMT", "costco": "COST", "target corp": "TGT", "target stores": "TGT",
     "home depot": "HD", "lowe's": "LOW", "starbucks": "SBUX",
     "mcdonald": "MCD",
     # --- MEDICAL/제약/바이오 ---
@@ -59,13 +67,15 @@ SYMBOL_ALIASES = {
     "exxon": "XOM", "chevron": "CVX", "occidental": "OXY",
     "conocophillips": "COP", "eog": "EOG", "devon": "DVN",
     "schlumberger": "SLB", "halliburton": "HAL",
-    "oil": "USO", "crude": "USO", "energy": "XLE",
-    "natural gas": "UNG", "gas": "BOIL",
+    "oil price": "USO", "crude oil": "USO", "oil surge": "USO", "oil drop": "USO",
+    "energy sector": "XLE", "energy stocks": "XLE",
+    "natural gas price": "UNG", "gas price": "BOIL",
     # --- AEROSPACE/DEFENSE (항공우주/방산) ---
     "boeing": "BA", "general electric": "GE", "general dynamics": "GD",
     "lockheed": "LMT", "northrop": "NOC", "raytheon": "RTX",
     "l3harris": "LHX", "transdigm": "TDG", "howmet": "HWM",
-    "defense": "ITA", "rocket lab": "RKLB",
+    "defense stocks": "ITA", "defense sector": "ITA", "defense spending": "ITA",
+    "rocket lab": "RKLB",
     # --- BANKS/FINANCE (금융) ---
     "jpmorgan": "JPM", "bank of america": "BAC", "goldman": "GS",
     "morgan stanley": "MS", "wells fargo": "WFC", "citigroup": "C",
@@ -88,8 +98,10 @@ SYMBOL_ALIASES = {
     "deere": "DE", "honeywell": "HON",
     # --- UTILITY/원전/전력 ---
     "nextera": "NEE", "duke energy": "DUK", "southern company": "SO",
-    "nuclear": "SMR", "smr": "SMR", "oklo": "OKLO", "cameco": "CCJ",
-    "uranium": "URA", "power grid": "VRT", "vertiv": "VRT",
+    "nuscale": "SMR", "smr reactor": "SMR", "small modular reactor": "SMR",
+    "oklo": "OKLO", "cameco": "CCJ",
+    "uranium price": "URA", "uranium stocks": "URA",
+    "power grid": "VRT", "vertiv": "VRT",
     # --- 금리/채권 ---
     "treasury": "TLT", "bond yield": "TLT", "mortgage rate": "TLT",
     # --- 원자재/귀금속/희토류 ---
@@ -100,9 +112,11 @@ SYMBOL_ALIASES = {
     "bitcoin": "COIN", "crypto": "COIN", "coinbase": "COIN",
     "microstrategy": "MSTR",
     # --- 로봇/자동화 ---
-    "robotics": "BOTZ", "robot": "BOTZ", "humanoid": "BOTZ",
+    "robotics stock": "BOTZ", "robotics sector": "BOTZ", "humanoid robot": "BOTZ",
     # --- 양자컴 ---
     "quantum": "IONQ", "ionq": "IONQ",
+    "rigetti": "RGTI", "rgti": "RGTI",
+    "d-wave": "QBTS", "dwave": "QBTS",
     # --- 데이터센터/리츠 ---
     "data center": "EQIX", "equinix": "EQIX", "digital realty": "DLR",
     "reit": "PLD", "prologis": "PLD", "american tower": "AMT",
@@ -141,12 +155,22 @@ def _detect_event_type(text: str) -> tuple[str, str]:
 def _extract_symbols(text: str, watchlist: list[str]) -> list[str]:
     lowered = text.lower()
     found: list[str] = []
+    # 1) alias matching (multi-word aliases are safe)
     for alias, symbol in SYMBOL_ALIASES.items():
-        if alias in lowered and symbol in watchlist:
+        if alias in lowered and symbol in watchlist and symbol not in found:
             found.append(symbol)
+    # 2) ticker matching — short tickers (<=3 chars) need word boundary check
     for symbol in watchlist:
-        if symbol.lower() in lowered and symbol not in found:
-            found.append(symbol)
+        if symbol in found:
+            continue
+        sym_lower = symbol.lower()
+        if len(symbol) <= 3:
+            # Word boundary: avoid "T" matching "the", "C" matching "cuts", etc.
+            if re.search(rf'\b{re.escape(sym_lower)}\b', lowered):
+                found.append(symbol)
+        else:
+            if sym_lower in lowered:
+                found.append(symbol)
     return found
 
 
@@ -165,7 +189,63 @@ def classify_news(raw: dict[str, Any], watchlist: list[str]) -> NewsEvent:
         direction = "BEARISH"
 
     urgency = 0.55 if event_type in {"GENERAL", "ANALYST"} else 0.80
+
+    # 헤지펀드/공매도/내부자 매도 → urgency 최고 (즉시 대응 필요)
+    if event_type in {"HEDGEFUND", "SHORT_SELLING"}:
+        urgency = 0.95
+    elif event_type == "INSIDER":
+        urgency = 0.90
+
     confidence = min(0.95, 0.45 + abs(score) * 0.35 + (0.15 if event_type != "GENERAL" else 0.0) + (0.10 if symbols else 0.0))
+
+    # 공매도 리포트/내부자 대량매도 → confidence 부스트 (실전에서 거의 100% 하락)
+    if event_type in {"SHORT_SELLING", "HEDGEFUND"}:
+        confidence = min(0.95, confidence + 0.15)
+    elif event_type == "INSIDER":
+        confidence = min(0.95, confidence + 0.10)
+
+    # 내부자 매도 / 공매도 맥락 강제 보정
+    # "insider selling surges" 에서 surges가 POS로 잡히는 문제 해결
+    # CEO/창업자 매도 = 최강 약세 신호 (언론에서 성장 떠들면서 본인은 매도)
+    _ceo_sell_context = {
+        "ceo sold", "ceo sells", "ceo unloads", "ceo dumps",
+        "founder sold", "founder sells", "founder unloads",
+        "ceo selling", "founder selling",
+        "musk sold", "musk sells",
+        "huang sold", "huang sells",
+        "liang sold", "liang sells",  # SMCI CEO
+        "karp sold", "karp sells",    # PLTR CEO
+        "beck sold", "spice sold",    # RKLB insiders
+    }
+    # 일반 내부자/공매도 매도
+    _sell_context = {
+        "insider sell", "insider sold", "insider dump",
+        "cfo sold", "coo sold", "cto sold",
+        "executive sold", "officer sold", "director sold",
+        "officers sold", "executives sold",
+        "stake sold", "unloads shares", "dumps shares",
+        "short seller", "short report", "short target",
+        "fraud alleged", "accounting fraud", "overvalued",
+        "insider selling",
+    }
+    lowered_full = text.lower()
+    if any(kw in lowered_full for kw in _ceo_sell_context):
+        score = -1.00  # CEO 매도 = 최강 약세, 무조건 -1.0
+        direction = "BEARISH"
+    elif any(kw in lowered_full for kw in _sell_context):
+        score = min(score, -0.80)  # 일반 내부자/공매도 = -0.80 이하 강제
+        direction = "BEARISH"
+
+    # 지정학 뉴스 점수 보정 — 중동/우크라이나 뉴스가 미국 주식에 -1.00은 과격
+    # 직접 미국 관련(트럼프/제재)이 아닌 해외 지정학은 점수 완화
+    if event_type == "GEOPOLITICAL" and abs(score) >= 0.80:
+        _us_direct = {"trump", "white house", "pentagon", "us military",
+                      "american", "united states", "congress", "senate"}
+        if not any(kw in lowered_full for kw in _us_direct):
+            score = max(-0.50, min(0.50, score * 0.5))  # 해외 지정학은 절반으로
+            if abs(score) < 0.20:
+                direction = "NEUTRAL"
+
     tradable = bool(symbols) and confidence >= 0.50 and abs(score) >= 0.20
     horizon = "INTRADAY"
     if event_type in {"EARNINGS", "INSIDER", "REGULATION"}:

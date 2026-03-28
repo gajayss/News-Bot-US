@@ -77,18 +77,23 @@ class OptionPlan:
 # Event speed profile
 # ---------------------------------------------------------------------------
 EVENT_SPEED = {
-    "GEOPOLITICAL": "FAST",     # hours ~ 1-2 days
-    "FED":          "FAST",     # same day, FOMC reaction
-    "REGULATION":   "MEDIUM",   # 1-3 days
-    "EARNINGS":     "MEDIUM",   # overnight gap + 1-3 days drift
-    "ANALYST":      "SLOW",     # days ~ weeks
-    "INSIDER":      "SLOW",
-    "GENERAL":      "SLOW",
+    "GEOPOLITICAL":   "FAST",     # hours ~ 1-2 days
+    "FED":            "FAST",     # same day, FOMC reaction
+    "TRUMP":          "FAST",     # 예측 불가, 순간 변동
+    "FOMC":           "FAST",     # FOMC 후 즉시 반응
+    "FED_SPEAK":      "FAST",     # 매파/비둘기 즉시 반영
+    "REGULATION":     "MEDIUM",   # 1-3 days
+    "EARNINGS":       "MEDIUM",   # overnight gap + 1-3 days drift
+    "SHORT_SELLING":  "FAST",     # 공매도 리포트 → 엄청 폭락, 당일~2일 승부
+    "HEDGEFUND":      "MEDIUM",   # 헤지펀드 포지션 변경 → 1-3일 반영
+    "ANALYST":        "SLOW",     # days ~ weeks
+    "INSIDER":        "SLOW",     # 내부자 매도 → 서서히 하락 (1-2달), 옵션은 DTE 길게
+    "GENERAL":        "SLOW",
 }
 
 # Fear regime: GEOPOLITICAL/FED events or very strong negative score
 # → tighter SL, shorter hold, faster exit
-FEAR_EVENT_TYPES = {"GEOPOLITICAL", "FED"}
+FEAR_EVENT_TYPES = {"GEOPOLITICAL", "FED", "SHORT_SELLING", "TRUMP"}
 
 
 def build_option_plan(
@@ -127,7 +132,11 @@ def build_option_plan(
             max_hold_days=max_hold_days,
         )
 
-    if abs_score < 0.60 or confidence < 0.65:
+    # 헤지펀드/공매도/내부자 매도 → 옵션 진입 기준 완화 (방향성 확실)
+    _high_impact_types = {"HEDGEFUND", "SHORT_SELLING", "INSIDER"}
+    is_high_impact = event_type in _high_impact_types
+
+    if not is_high_impact and (abs_score < 0.60 or confidence < 0.65):
         return _stock_preferred(
             reason=f"약한 신호(score={score:+.2f}, conf={confidence:.2f}): 옵션 프리미엄 리스크 > 기대수익",
             score=abs_score, confidence=confidence,
@@ -136,7 +145,7 @@ def build_option_plan(
             max_hold_days=max_hold_days,
         )
 
-    if speed == "SLOW" and abs_score < 0.85:
+    if speed == "SLOW" and abs_score < 0.85 and not is_high_impact:
         return _stock_preferred(
             reason=f"느린 촉매({event_type})+중간 강도: 시간가치 잠식이 방향성 이익 초과",
             score=abs_score, confidence=confidence,

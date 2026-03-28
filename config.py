@@ -16,7 +16,7 @@ WATCHLIST = [s.strip().upper() for s in os.getenv("WATCHLIST", "NVDA,TSLA,AAPL,Q
 
 NEWS_SOURCE_MODE = os.getenv("NEWS_SOURCE_MODE", "sample").strip().lower()
 FINNHUB_KEY = os.getenv("FINNHUB_KEY", "")
-NEWS_POLL_SEC = int(os.getenv("NEWS_POLL_SEC", "20"))
+NEWS_POLL_SEC = int(os.getenv("NEWS_POLL_SEC", "180"))  # 3분 (FJ RSS가 빠른 뉴스 담당)
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.55"))
 NEGATIVE_STOCK_THRESHOLD = float(os.getenv("NEGATIVE_STOCK_THRESHOLD", "-0.70"))
 POSITIVE_STOCK_THRESHOLD = float(os.getenv("POSITIVE_STOCK_THRESHOLD", "0.70"))
