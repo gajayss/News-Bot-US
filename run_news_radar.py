@@ -100,7 +100,7 @@ def main() -> None:
                 event = classify_news(raw, config.WATCHLIST)
                 seen.add(news_id)
                 bus.append_item("news_events", event.to_dict())
-                logger.info("EVENT %s %s score=%.2f symbols=%s", event.event_type, event.direction, event.score, event.symbols)
+                logger.info("EVENT [%s/%s] %s score=%.2f symbols=%s", event.axis_id, event.event_type, event.direction, event.score, event.symbols)
                 for signal in orchestrator.build_signals(event):
                     target_file = "stock_signals" if signal.asset_class == "STOCK" else "option_signals"
                     bus.append_item(target_file, signal.to_dict())

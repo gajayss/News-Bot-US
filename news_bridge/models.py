@@ -21,6 +21,7 @@ class NewsEvent:
     published_at: str = field(default_factory=utc_now_iso)
     symbols: list[str] = field(default_factory=list)
     event_type: str = "GENERAL"
+    axis_id: str = "UNKNOWN"
     direction: str = "NEUTRAL"
     score: float = 0.0
     confidence: float = 0.0
@@ -45,6 +46,7 @@ class TradeSignal:
     urgency: float = 0.0
     reason: str = ""
     event_type: str = "GENERAL"
+    axis_id: str = "UNKNOWN"
     option_expiry_type: str = "MONTHLY"
     option_right: str = "CALL"
     reference_price: float = 0.0

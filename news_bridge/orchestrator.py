@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from .axes import AXES, DEFAULT_AXIS, apply_axis_modifiers, classify_axis
 from .event_calendar import EventCalendarState
 from .models import NewsEvent, TradeSignal
 from .option_strategy import build_option_plan
@@ -45,6 +46,13 @@ class SignalOrchestrator:
         if not event.tradable or event.confidence < self.confidence_threshold:
             return []
 
+        # --- 5축 프로파일 로드 ---
+        axis = AXES.get(event.axis_id, DEFAULT_AXIS)
+        adj_sl, adj_tp, adj_hold, adj_qty = apply_axis_modifiers(
+            axis, self.stop_loss_pct, self.take_profit_pct,
+            self.max_hold_days, self.max_qty,
+        )
+
         # --- 캘린더 제약 조건 확인 ---
         cal_constraint = self._get_calendar_constraint()
 
@@ -69,8 +77,9 @@ class SignalOrchestrator:
                         strength=abs(event.score),
                         confidence=event.confidence,
                         urgency=event.urgency,
-                        reason=f"{event.event_type} bearish news",
+                        reason=f"[{axis.axis_id}] {event.event_type} bearish",
                         event_type=event.event_type,
+                        axis_id=event.axis_id,
                         qty=stock_qty,
                     )
                 )
@@ -84,8 +93,9 @@ class SignalOrchestrator:
                         strength=abs(event.score),
                         confidence=event.confidence,
                         urgency=event.urgency,
-                        reason=f"{event.event_type} bullish news",
+                        reason=f"[{axis.axis_id}] {event.event_type} bullish",
                         event_type=event.event_type,
+                        axis_id=event.axis_id,
                         qty=stock_qty,
                     )
                 )
@@ -105,9 +115,11 @@ class SignalOrchestrator:
                 direction = "BULLISH"
 
             if option_side:
-                # 캘린더 제약 적용
-                effective_max_qty = self.max_qty
-                effective_hold = self.max_hold_days
+                # 축별 조정값 기반 + 캘린더 제약 적용
+                effective_max_qty = adj_qty
+                effective_hold = adj_hold
+                effective_sl = adj_sl
+                effective_tp = adj_tp
                 cal_note = ""
 
                 if cal_constraint["constrained"]:
@@ -129,8 +141,9 @@ class SignalOrchestrator:
                                     strength=abs(event.score),
                                     confidence=event.confidence,
                                     urgency=event.urgency,
-                                    reason=f"[이벤트차단→주식] {cal_constraint['reason']}",
+                                    reason=f"[{axis.axis_id}|이벤트차단→주식] {cal_constraint['reason']}",
                                     event_type=event.event_type,
+                                    axis_id=event.axis_id,
                                     qty=self.base_qty,
                                 )
                             )
@@ -139,8 +152,8 @@ class SignalOrchestrator:
                     elif action == "REDUCE":
                         qty_red = cal_constraint["qty_reduction_pct"]
                         hold_red = cal_constraint["hold_reduction_pct"]
-                        effective_max_qty = max(1, math.floor(self.max_qty * (1 - qty_red)))
-                        effective_hold = max(2, math.floor(self.max_hold_days * (1 - hold_red)))
+                        effective_max_qty = max(1, math.floor(effective_max_qty * (1 - qty_red)))
+                        effective_hold = max(2, math.floor(effective_hold * (1 - hold_red)))
                         cal_note = f" | [이벤트축소] {cal_constraint['reason']}"
 
                 plan = build_option_plan(
@@ -153,8 +166,8 @@ class SignalOrchestrator:
                     base_qty=self.base_qty,
                     max_qty=effective_max_qty,
                     max_premium_pct=self.max_premium_pct,
-                    stop_loss_pct=self.stop_loss_pct,
-                    take_profit_pct=self.take_profit_pct,
+                    stop_loss_pct=effective_sl,
+                    take_profit_pct=effective_tp,
                     max_hold_days=effective_hold,
                     fear_regime=self.fear_regime,
                 )
@@ -175,15 +188,17 @@ class SignalOrchestrator:
                                 strength=abs(event.score),
                                 confidence=event.confidence,
                                 urgency=event.urgency,
-                                reason=f"[옵션→주식 전환] {plan.recommendation_reason}{cal_note}",
+                                reason=f"[{axis.axis_id}|옵션→주식] {plan.recommendation_reason}{cal_note}",
                                 event_type=event.event_type,
+                                axis_id=event.axis_id,
                                 qty=plan.qty,
                                 option_plan=plan.to_dict(),
                             )
                         )
                 else:
-                    # 캘린더 제약을 option_plan에 기록
+                    # 축별 + 캘린더 제약을 option_plan에 기록
                     plan_dict = plan.to_dict()
+                    plan_dict["axis_modifiers"] = axis.to_dict()
                     if cal_constraint["constrained"]:
                         plan_dict["calendar_constraint"] = {
                             "action": cal_constraint["action"],
@@ -201,8 +216,9 @@ class SignalOrchestrator:
                             strength=abs(event.score),
                             confidence=event.confidence,
                             urgency=event.urgency,
-                            reason=f"{event.event_type} {direction.lower()} | {plan.strike_preference} {plan.expiry_guidance}{cal_note}",
+                            reason=f"[{axis.axis_id}] {event.event_type} {direction.lower()} | {plan.strike_preference} {plan.expiry_guidance}{cal_note}",
                             event_type=event.event_type,
+                            axis_id=event.axis_id,
                             option_expiry_type=plan.expiry_type,
                             option_right=option_right,
                             qty=plan.qty,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .axes import detect_event_type
 from .models import NewsEvent
 
 NEG_WORDS = {
@@ -50,6 +51,17 @@ SYMBOL_ALIASES = {
     "chip": "SOXL",
     "chips": "SOXL",
     "gpu": "SOXL",
+    # THEME aliases
+    "quantum": "IONQ",
+    "ionq": "IONQ",
+    "uranium": "UEC",
+    "nuclear": "UEC",
+    "cameco": "CCJ",
+    "robotics": "BOTZ",
+    "robot": "BOTZ",
+    "biotech": "XBI",
+    "glp-1": "NVO",
+    "ozempic": "NVO",
 }
 
 
@@ -63,12 +75,19 @@ def _score_text(text: str) -> float:
     return max(-1.0, min(1.0, (pos - neg) / total))
 
 
-def _detect_event_type(text: str) -> str:
+def _detect_event_type(text: str) -> tuple[str, str]:
+    """Detect event type using 5-axis system. Returns (event_type, axis_id)."""
+    # Primary: 5-axis keyword matching (priority-ordered)
+    event_type, axis_id = detect_event_type(text)
+    if event_type != "GENERAL":
+        return event_type, axis_id
+
+    # Fallback: legacy EVENT_RULES for edge cases
     lowered = text.lower()
-    for event_type, keywords in EVENT_RULES.items():
+    for et, keywords in EVENT_RULES.items():
         if any(k in lowered for k in keywords):
-            return event_type
-    return "GENERAL"
+            return et, "UNKNOWN"
+    return "GENERAL", "UNKNOWN"
 
 
 def _extract_symbols(text: str, watchlist: list[str]) -> list[str]:
@@ -88,7 +107,7 @@ def classify_news(raw: dict[str, Any], watchlist: list[str]) -> NewsEvent:
     summary = str(raw.get("summary") or raw.get("description") or "").strip()
     text = f"{headline} {summary}".strip()
     score = _score_text(text)
-    event_type = _detect_event_type(text)
+    event_type, axis_id = _detect_event_type(text)
     symbols = _extract_symbols(text, watchlist)
 
     direction = "NEUTRAL"
@@ -103,6 +122,8 @@ def classify_news(raw: dict[str, Any], watchlist: list[str]) -> NewsEvent:
     horizon = "INTRADAY"
     if event_type in {"EARNINGS", "INSIDER", "REGULATION"}:
         horizon = "SWING"
+    elif axis_id == "THEME":
+        horizon = "SWING"  # 테마주는 추세 매매
 
     return NewsEvent(
         source=str(raw.get("source") or "unknown"),
@@ -113,6 +134,7 @@ def classify_news(raw: dict[str, Any], watchlist: list[str]) -> NewsEvent:
         published_at=str(raw.get("datetime") or raw.get("published_at") or raw.get("publishedAt") or ""),
         symbols=symbols,
         event_type=event_type,
+        axis_id=axis_id,
         direction=direction,
         score=round(score, 4),
         confidence=round(confidence, 4),
