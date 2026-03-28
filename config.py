@@ -51,6 +51,20 @@ KIWOOM_APP_SECRET = os.getenv("KIWOOM_APP_SECRET", "")
 KIWOOM_ACCOUNT_NO = os.getenv("KIWOOM_ACCOUNT_NO", "")
 KIWOOM_OPTION_ORDER_TR_CODE = os.getenv("KIWOOM_OPTION_ORDER_TR_CODE", "")
 
+# --- Option Strategy ---
+BASE_QTY = int(os.getenv("BASE_QTY", "1"))
+MAX_QTY = int(os.getenv("MAX_QTY", "2"))
+MAX_PREMIUM_PCT = float(os.getenv("MAX_PREMIUM_PCT", "0.03"))
+STOP_LOSS_PCT = float(os.getenv("STOP_LOSS_PCT", "-0.30"))
+TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "0.40"))
+MAX_HOLD_DAYS = int(os.getenv("MAX_HOLD_DAYS", "10"))
+FEAR_REGIME = os.getenv("FEAR_REGIME", "false").lower() == "true"
+
+# --- Economic Calendar ---
+CALENDAR_DAYS_AHEAD = int(os.getenv("CALENDAR_DAYS_AHEAD", "7"))
+PRE_EVENT_BLOCK_HOURS = float(os.getenv("PRE_EVENT_BLOCK_HOURS", "4.0"))
+POST_EVENT_BOOST_HOURS = float(os.getenv("POST_EVENT_BOOST_HOURS", "2.0"))
+
 # --- Rate Limiter ---
 MAX_ORDERS_PER_MINUTE = int(os.getenv("MAX_ORDERS_PER_MINUTE", "5"))
 SYMBOL_COOLDOWN_SEC = float(os.getenv("SYMBOL_COOLDOWN_SEC", "60"))

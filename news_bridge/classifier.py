@@ -6,20 +6,26 @@ from typing import Any
 from .models import NewsEvent
 
 NEG_WORDS = {
-    "drop", "falls", "fall", "slumps", "miss", "cut", "cuts", "probe", "lawsuit", "ban", "war",
-    "missile", "attack", "downgrade", "fraud", "recall", "weak", "warns", "warning", "delay",
+    "drop", "drops", "falls", "fall", "slumps", "slump", "miss", "cut", "cuts", "probe", "lawsuit",
+    "ban", "war", "missile", "attack", "strikes", "downgrade", "fraud", "recall", "weak", "warns",
+    "warning", "delay", "fears", "conflict", "disruption", "slam", "flee", "crash", "plunge", "threat",
+    "threatens", "banning",
 }
 POS_WORDS = {
-    "beat", "beats", "surge", "jumps", "jump", "raises", "raise", "approval", "wins", "record",
-    "guidance", "growth", "upgrades", "upgrade", "partnership",
+    "beat", "beats", "surge", "surges", "jumps", "jump", "raises", "raise", "approval", "wins",
+    "record", "guidance", "growth", "upgrades", "upgrade", "partnership", "rally", "soars",
+    "accelerates", "spending", "contracts",
 }
 EVENT_RULES = {
-    "GEOPOLITICAL": ["iran", "missile", "war", "attack", "israel", "strait"],
+    "GEOPOLITICAL": ["iran", "missile", "war", "attack", "israel", "strait", "trump", "middle east",
+                     "pentagon", "military", "defense", "conflict", "red sea", "hormuz", "sanctions",
+                     "executive order"],
     "FED": ["powell", "fomc", "fed", "pce", "cpi", "inflation", "rate cut", "rates"],
-    "EARNINGS": ["earnings", "guidance", "quarter", "revenue", "eps"],
+    "EARNINGS": ["earnings", "guidance", "quarter", "revenue", "eps", "supply chain"],
     "ANALYST": ["downgrade", "upgrade", "price target", "analyst"],
     "INSIDER": ["insider", "director sold", "ceo sold", "stake sold"],
-    "REGULATION": ["probe", "lawsuit", "antitrust", "tariff", "restriction", "ban"],
+    "REGULATION": ["probe", "lawsuit", "antitrust", "tariff", "restriction", "ban", "banning",
+                   "executive order"],
 }
 SYMBOL_ALIASES = {
     "nvidia": "NVDA",
@@ -31,6 +37,19 @@ SYMBOL_ALIASES = {
     "amd": "AMD",
     "qqq": "QQQ",
     "spy": "SPY",
+    "nasdaq": "TQQQ",
+    "oil": "USO",
+    "crude": "USO",
+    "energy": "XLE",
+    "lockheed": "LMT",
+    "raytheon": "RTX",
+    "defense": "ITA",
+    "natural gas": "UNG",
+    "gas": "BOIL",
+    "semiconductor": "SOXL",
+    "chip": "SOXL",
+    "chips": "SOXL",
+    "gpu": "SOXL",
 }
 
 

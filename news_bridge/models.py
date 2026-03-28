@@ -50,6 +50,7 @@ class TradeSignal:
     reference_price: float = 0.0
     qty: int = 1
     created_at: str = field(default_factory=utc_now_iso)
+    option_plan: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
