@@ -1,0 +1,10 @@
+{
+  "underlying": "--symbol",
+  "side": "--side",
+  "qty": "--qty",
+  "option_right": "--right",
+  "expiry_type": "--expiry-type",
+  "signal_id": "--signal-id",
+  "reason": "--reason",
+  "reference_price": "--reference-price"
+}

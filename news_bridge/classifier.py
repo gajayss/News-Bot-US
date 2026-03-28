@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from .models import NewsEvent
+
+NEG_WORDS = {
+    "drop", "falls", "fall", "slumps", "miss", "cut", "cuts", "probe", "lawsuit", "ban", "war",
+    "missile", "attack", "downgrade", "fraud", "recall", "weak", "warns", "warning", "delay",
+}
+POS_WORDS = {
+    "beat", "beats", "surge", "jumps", "jump", "raises", "raise", "approval", "wins", "record",
+    "guidance", "growth", "upgrades", "upgrade", "partnership",
+}
+EVENT_RULES = {
+    "GEOPOLITICAL": ["iran", "missile", "war", "attack", "israel", "strait"],
+    "FED": ["powell", "fomc", "fed", "pce", "cpi", "inflation", "rate cut", "rates"],
+    "EARNINGS": ["earnings", "guidance", "quarter", "revenue", "eps"],
+    "ANALYST": ["downgrade", "upgrade", "price target", "analyst"],
+    "INSIDER": ["insider", "director sold", "ceo sold", "stake sold"],
+    "REGULATION": ["probe", "lawsuit", "antitrust", "tariff", "restriction", "ban"],
+}
+SYMBOL_ALIASES = {
+    "nvidia": "NVDA",
+    "tesla": "TSLA",
+    "apple": "AAPL",
+    "microsoft": "MSFT",
+    "amazon": "AMZN",
+    "meta": "META",
+    "amd": "AMD",
+    "qqq": "QQQ",
+    "spy": "SPY",
+}
+
+
+def _score_text(text: str) -> float:
+    tokens = re.findall(r"[A-Za-z']+", text.lower())
+    pos = sum(1 for t in tokens if t in POS_WORDS)
+    neg = sum(1 for t in tokens if t in NEG_WORDS)
+    total = pos + neg
+    if total == 0:
+        return 0.0
+    return max(-1.0, min(1.0, (pos - neg) / total))
+
+
+def _detect_event_type(text: str) -> str:
+    lowered = text.lower()
+    for event_type, keywords in EVENT_RULES.items():
+        if any(k in lowered for k in keywords):
+            return event_type
+    return "GENERAL"
+
+
+def _extract_symbols(text: str, watchlist: list[str]) -> list[str]:
+    lowered = text.lower()
+    found: list[str] = []
+    for alias, symbol in SYMBOL_ALIASES.items():
+        if alias in lowered and symbol in watchlist:
+            found.append(symbol)
+    for symbol in watchlist:
+        if symbol.lower() in lowered and symbol not in found:
+            found.append(symbol)
+    return found
+
+
+def classify_news(raw: dict[str, Any], watchlist: list[str]) -> NewsEvent:
+    headline = str(raw.get("headline") or raw.get("title") or "").strip()
+    summary = str(raw.get("summary") or raw.get("description") or "").strip()
+    text = f"{headline} {summary}".strip()
+    score = _score_text(text)
+    event_type = _detect_event_type(text)
+    symbols = _extract_symbols(text, watchlist)
+
+    direction = "NEUTRAL"
+    if score >= 0.20:
+        direction = "BULLISH"
+    elif score <= -0.20:
+        direction = "BEARISH"
+
+    urgency = 0.55 if event_type in {"GENERAL", "ANALYST"} else 0.80
+    confidence = min(0.95, 0.45 + abs(score) * 0.35 + (0.15 if event_type != "GENERAL" else 0.0) + (0.10 if symbols else 0.0))
+    tradable = bool(symbols) and confidence >= 0.50 and abs(score) >= 0.20
+    horizon = "INTRADAY"
+    if event_type in {"EARNINGS", "INSIDER", "REGULATION"}:
+        horizon = "SWING"
+
+    return NewsEvent(
+        source=str(raw.get("source") or "unknown"),
+        source_news_id=str(raw.get("id") or raw.get("news_id") or headline[:30]),
+        headline=headline,
+        summary=summary,
+        url=str(raw.get("url") or ""),
+        published_at=str(raw.get("datetime") or raw.get("published_at") or raw.get("publishedAt") or ""),
+        symbols=symbols,
+        event_type=event_type,
+        direction=direction,
+        score=round(score, 4),
+        confidence=round(confidence, 4),
+        urgency=round(urgency, 4),
+        horizon=horizon,
+        tradable=tradable,
+        raw=raw,
+    )
