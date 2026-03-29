@@ -152,6 +152,18 @@ def _detect_event_type(text: str) -> tuple[str, str]:
     return "GENERAL", "UNKNOWN"
 
 
+# 날짜/시간 약어 — 티커와 혼동 방지 (Jan~Dec, Mon~Sun)
+_DATE_ABBRS = {
+    "jan", "feb", "mar", "apr", "may", "jun",
+    "jul", "aug", "sep", "oct", "nov", "dec",
+    "mon", "tue", "wed", "thu", "fri", "sat", "sun",
+}
+
+# 1글자 티커 (C, F, T, V 등)는 이니셜·약어 오탐 위험 → 대문자 단어로만 허용
+# ex) "McMillon C Douglas" 의 'C' → 이니셜, 'CITIGROUP' 뉴스의 'C' → 허용
+_SINGLE_CHAR_TICKERS = {"C", "F", "T", "V", "U", "K", "X", "A", "E"}
+
+
 def _extract_symbols(text: str, watchlist: list[str]) -> list[str]:
     lowered = text.lower()
     found: list[str] = []
@@ -164,10 +176,23 @@ def _extract_symbols(text: str, watchlist: list[str]) -> list[str]:
         if symbol in found:
             continue
         sym_lower = symbol.lower()
-        if len(symbol) <= 3:
-            # Word boundary: avoid "T" matching "the", "C" matching "cuts", etc.
-            if re.search(rf'\b{re.escape(sym_lower)}\b', lowered):
-                found.append(symbol)
+        if len(symbol) == 1:
+            # 1글자 티커: 원문에서 대문자 단독 단어로만 허용 (이니셜 오탐 방지)
+            if symbol in _SINGLE_CHAR_TICKERS:
+                if re.search(rf'\b{re.escape(symbol)}\b', text):
+                    # 주변이 이름/이니셜 패턴이면 제외 (알파벳 단일 문자 + 공백 + 이름)
+                    # 예: "McMillon C Douglas" → 제외, "Citigroup (C)" → 허용
+                    ctx_match = re.search(
+                        rf'(?:[A-Z][a-z]+ ){re.escape(symbol)}(?: [A-Z][a-z]+)',
+                        text,
+                    )
+                    if not ctx_match:
+                        found.append(symbol)
+        elif len(symbol) <= 3:
+            # 2~3글자 티커: 날짜 약어 제외 + 워드바운더리
+            if sym_lower not in _DATE_ABBRS:
+                if re.search(rf'\b{re.escape(sym_lower)}\b', lowered):
+                    found.append(symbol)
         else:
             if sym_lower in lowered:
                 found.append(symbol)

@@ -67,6 +67,106 @@ class DailyJsonBus:
             path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return payload["items"][0]
 
+    # ------------------------------------------------------------------
+    # 선분이력(Slowly Changing Dimension) 시그널 관리
+    # ------------------------------------------------------------------
+    _OPEN_SENTINEL = "9999-12-31T23:59:59"
+    _SIGNALS_FILE = "signals_store"  # 날짜 초기화 없는 영구 파일
+
+    def _ensure_signals_store(self) -> None:
+        """signals_store.json 초기화 (날짜 초기화 없이 영구 유지)."""
+        path = self.interface_dir / f"{self._SIGNALS_FILE}.json"
+        if not path.exists():
+            path.write_text(
+                json.dumps({"items": []}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+
+    def upsert_signal(self, item: dict[str, Any]) -> str:
+        """선분이력 기반 시그널 upsert.
+
+        동일 (symbol, side, asset_class) 의 열린 시그널이 존재하면
+        strength / reason / confidence / urgency / qty 만 업데이트.
+        없으면 신규 insert.
+
+        Returns:
+            "updated" | "inserted"
+        """
+        self._ensure_signals_store()
+        path = self.interface_dir / f"{self._SIGNALS_FILE}.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        items: list[dict[str, Any]] = payload.setdefault("items", [])
+
+        symbol     = item.get("symbol", "")
+        side       = item.get("side", "")
+        asset_cls  = item.get("asset_class", "")
+
+        # 열린 시그널(expired_at == sentinel) 탐색
+        for existing in items:
+            if (
+                existing.get("symbol") == symbol
+                and existing.get("side") == side
+                and existing.get("asset_class") == asset_cls
+                and existing.get("expired_at", self._OPEN_SENTINEL) == self._OPEN_SENTINEL
+            ):
+                # 강도·사유 변경분만 업데이트 (선분이력 유지)
+                changed = False
+                for fld in ("strength", "reason", "confidence", "urgency", "qty", "option_plan"):
+                    if fld in item and item[fld] != existing.get(fld):
+                        existing[fld] = item[fld]
+                        changed = True
+                if changed:
+                    path.write_text(
+                        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+                    )
+                return "updated"
+
+        # 신규 insert
+        items.append(item)
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return "inserted"
+
+    def expire_signal(
+        self,
+        symbol: str,
+        side: str,
+        asset_class: str,
+        expired_at: str,
+    ) -> bool:
+        """열린 시그널을 종료 처리 (expired_at 업데이트).
+
+        Returns:
+            True if any signal was expired, False otherwise.
+        """
+        self._ensure_signals_store()
+        path = self.interface_dir / f"{self._SIGNALS_FILE}.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        items: list[dict[str, Any]] = payload.get("items", [])
+        changed = False
+        for existing in items:
+            if (
+                existing.get("symbol") == symbol
+                and existing.get("side") == side
+                and existing.get("asset_class") == asset_class
+                and existing.get("expired_at", self._OPEN_SENTINEL) == self._OPEN_SENTINEL
+            ):
+                existing["expired_at"] = expired_at
+                changed = True
+        if changed:
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        return changed
+
+    def read_signals(self) -> list[dict[str, Any]]:
+        """signals_store의 모든 시그널 반환."""
+        self._ensure_signals_store()
+        path = self.interface_dir / f"{self._SIGNALS_FILE}.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return list(payload.get("items", []))
+
     def set_consumer_offset(self, consumer_name: str, offset: int) -> None:
         path = self._active_path("consumer_state")
         state = self.get_consumer_state()

@@ -175,6 +175,18 @@ def _read_json_items(name: str) -> list[dict]:
         return []
 
 
+def _read_signals_store() -> list[dict]:
+    """선분이력 signals_store.json 읽기 (날짜 초기화 없는 영구 파일)."""
+    path = INTERFACE_DIR / "signals_store.json"
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return list(payload.get("items", []))
+    except Exception:
+        return []
+
+
 DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="ko"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -264,6 +276,19 @@ th{position:relative}
 /* RRG */
 .rrg-wrap{position:relative;width:100%;height:500px;overflow:hidden}
 #rrg-plot{width:100%;height:100%}
+
+/* Signal filter buttons */
+.sfbtn{padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--td);transition:all .15s}
+.sfbtn.on{background:#1e40af;color:#93c5fd;border-color:#3b82f6}
+.sfbtn:hover:not(.on){background:rgba(255,255,255,.06);color:var(--tw)}
+
+/* Sector badge */
+.sec{display:inline-block;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:600;background:rgba(99,102,241,.15);color:#a5b4fc}
+.ind{font-size:11px;color:var(--td)}
+
+/* Active / expired badge */
+.bact{background:#052e16;color:#4ade80;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:600}
+.bexp{background:#1c1917;color:#78716c;padding:2px 7px;border-radius:3px;font-size:11px}
 </style></head>
 <body>
 
@@ -287,16 +312,27 @@ th{position:relative}
 
 <!-- Row 1 Left: 매매 시그널 (이전 위치에서 위로) -->
 <div class="pnl">
-<div class="ph"><b>매매 시그널</b><small id="sc"></small></div>
-<div class="desc"><b>BUY_PUT</b>=풋매수(하락 베팅) <b>BUY_CALL</b>=콜매수(상승 베팅) <b>SELL</b>=주식 매도. V4 시장 점수 + 뉴스 방향 일치 시 옵션 진입.</div>
+<div class="ph"><b>매매 시그널</b><small id="sc"></small>
+<div style="display:flex;gap:6px;align-items:center">
+<span style="font-size:11px;color:var(--td)">필터:</span>
+<button id="sf_active" onclick="setSigFilter('active')" class="sfbtn on">활성만</button>
+<button id="sf_today"  onclick="setSigFilter('today')"  class="sfbtn">오늘</button>
+<button id="sf_3day"   onclick="setSigFilter('3day')"   class="sfbtn">3일</button>
+<button id="sf_all"    onclick="setSigFilter('all')"    class="sfbtn">전체</button>
+</div></div>
+<div class="desc"><b>BUY_PUT</b>=풋매수(하락 베팅) <b>BUY_CALL</b>=콜매수(상승 베팅) <b>SELL</b>=주식 매도. 선분이력 관리: 동일(종목+방향) 열린 시그널은 중복 미등록.</div>
 <div class="pb"><table id="st"><thead><tr>
-<th data-c="0" data-t="s" style="width:70px">종목<div class="rz"></div></th>
-<th data-c="1" data-t="s" style="width:90px">방향<div class="rz"></div></th>
-<th data-c="2" data-t="s" style="width:65px">유형<div class="rz"></div></th>
-<th data-c="3" data-t="s" style="width:75px">축<div class="rz"></div></th>
-<th data-c="4" data-t="n" class="r" style="width:45px">수량<div class="rz"></div></th>
-<th data-c="5" data-t="n" class="r" style="width:55px">강도<div class="rz"></div></th>
-<th data-c="6" data-t="s">사유<div class="rz"></div></th>
+<th data-c="0" data-t="s" style="width:60px">종목<div class="rz"></div></th>
+<th data-c="1" data-t="s" style="width:55px">섹터<div class="rz"></div></th>
+<th data-c="2" data-t="s" style="width:70px">산업군<div class="rz"></div></th>
+<th data-c="3" data-t="s" style="width:90px">방향<div class="rz"></div></th>
+<th data-c="4" data-t="s" style="width:60px">유형<div class="rz"></div></th>
+<th data-c="5" data-t="s" style="width:70px">축<div class="rz"></div></th>
+<th data-c="6" data-t="n" class="r" style="width:40px">수량<div class="rz"></div></th>
+<th data-c="7" data-t="n" class="r" style="width:50px">강도<div class="rz"></div></th>
+<th data-c="8" data-t="s" style="width:85px">발생일시<div class="rz"></div></th>
+<th data-c="9" data-t="s" style="width:85px">종료<div class="rz"></div></th>
+<th data-c="10" data-t="s">사유<div class="rz"></div></th>
 </tr></thead><tbody id="sb"></tbody></table></div></div>
 
 <!-- Row 1 Right: RRG 뉴스 상대강도 (NEW) -->
@@ -401,6 +437,70 @@ const SRCS=[
 {n:'Fintel',d:'공매도 비율 (준비중)',cy:'-'}
 ];
 let ss={};
+const OPEN_SENTINEL='9999-12-31T23:59:59';
+let sigFilter='active';  // 활성만 | today | 3day | all
+
+function setSigFilter(f){
+  sigFilter=f;
+  document.querySelectorAll('.sfbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('sf_'+f).classList.add('on');
+  if(window._lastSignals) renderSignals(window._lastSignals);
+}
+
+function fmtDt(iso){
+  if(!iso||iso===OPEN_SENTINEL) return '';
+  const d=new Date(iso);
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  const hh=String(d.getHours()).padStart(2,'0');
+  const mi=String(d.getMinutes()).padStart(2,'0');
+  return `${mm}-${dd} ${hh}:${mi}`;
+}
+
+function renderSignals(sigs){
+  window._lastSignals=sigs;
+  const now=new Date();
+  const filtered=sigs.filter(s=>{
+    const ea=s.expired_at||OPEN_SENTINEL;
+    const ca=s.created_at||'';
+    const isActive=(ea===OPEN_SENTINEL);
+    if(sigFilter==='active') return isActive;
+    if(sigFilter==='today'){
+      const t=new Date(ca);
+      return t.toDateString()===now.toDateString();
+    }
+    if(sigFilter==='3day'){
+      const t=new Date(ca);
+      return (now-t)<3*86400*1000;
+    }
+    return true; // all
+  });
+  const rev=filtered.slice().reverse();
+  let sh='';
+  for(const s of rev){
+    const ib=s.side&&s.side.includes('BUY');
+    const ac=AC[s.axis_id||'UNKNOWN']||'#4b5563';
+    const ea=s.expired_at||OPEN_SENTINEL;
+    const isActive=(ea===OPEN_SENTINEL);
+    const expBadge=isActive
+      ?'<span class="bact">활성중</span>'
+      :`<span class="bexp" title="${ea}">${fmtDt(ea)}</span>`;
+    const sect=s.sector||'';
+    const ind=s.industry||'';
+    sh+=`<tr>
+<td class="sym">${s.symbol||''}</td>
+<td><span class="sec">${sect}</span></td>
+<td class="ind">${ind}</td>
+<td><span class="b ${ib?'bb':'br'}">${s.side||''}</span></td>
+<td style="font-size:12px">${s.asset_class||''}</td>
+<td><span class="bx" style="background:${ac}18;color:${ac};font-size:11px">${s.axis_id||''}</span></td>
+<td class="r" data-v="${s.qty||1}">${s.qty||1}</td>
+<td class="r" data-v="${s.strength||0}">${(s.strength||0).toFixed(2)}</td>
+<td style="font-size:11px;color:var(--td)">${fmtDt(s.created_at||'')}</td>
+<td>${expBadge}</td>
+<td class="rsn" title="${(s.reason||'').replace(/"/g,'&quot;')}">${(s.reason||'').substring(0,50)}</td></tr>`}
+  document.getElementById('sb').innerHTML=sh||'<tr><td colspan="11" style="color:var(--td);padding:20px;text-align:center">시그널 대기중...</td></tr>';
+}
 
 document.querySelectorAll('th[data-c]').forEach(h=>{
 h.addEventListener('click',e=>{
@@ -697,18 +797,9 @@ nh+=`<tr><td><span class="bx" style="background:${c}18;color:${c}">${e.axis_id||
 <td title="${(e.headline||'').replace(/"/g,'&quot;')}" style="font-size:14px;white-space:normal;max-width:700px">${e.headline||''}${krTag(e.headline||'')}</td></tr>`}
 document.getElementById('nb').innerHTML=nh;
 
-const sgr=sg.slice().reverse();
-document.getElementById('sc').textContent=sgr.length+'건';
-let sh='';
-for(const s of sgr){const ib=s.side&&s.side.includes('BUY');const ac=AC[s.axis_id||'UNKNOWN']||'#4b5563';
-sh+=`<tr><td class="sym">${s.symbol||''}</td>
-<td><span class="b ${ib?'bb':'br'}">${s.side||''}</span></td>
-<td style="font-size:12px">${s.asset_class||''}</td>
-<td><span class="bx" style="background:${ac}18;color:${ac};font-size:11px">${s.axis_id||''}</span></td>
-<td class="r" data-v="${s.qty||1}">${s.qty||1}</td>
-<td class="r" data-v="${s.strength||0}">${(s.strength||0).toFixed(2)}</td>
-<td class="rsn" title="${(s.reason||'').replace(/"/g,'&quot;')}">${(s.reason||'').substring(0,55)}</td></tr>`}
-document.getElementById('sb').innerHTML=sh||'<tr><td colspan="7" style="color:var(--td);padding:20px;text-align:center">시그널 대기중...</td></tr>';
+// 시그널 렌더링 — 선분이력 기반 필터 적용
+renderSignals(d.all_signals||[]);
+document.getElementById('sc').textContent=(d.all_signals||[]).length+'건';
 
 const cl=d.calendar_events||[];
 document.getElementById('cc').textContent=cl.length+'건';
@@ -752,6 +843,9 @@ def api_state():
     stock_signals = _read_json_items("stock_signals")
     option_signals = _read_json_items("option_signals")
 
+    # 선분이력 시그널 store (중복 제거된 영구 보관본)
+    all_signals = _read_signals_store()
+
     # RRG 데이터 갱신
     _update_rrg_data(news_events)
     rrg_trails = _get_rrg_trails()
@@ -781,6 +875,7 @@ def api_state():
         "news_events": news_events[-100:],
         "stock_signals": stock_signals[-50:],
         "option_signals": option_signals[-50:],
+        "all_signals": all_signals,           # 선분이력 기반 전체 시그널 (중복 제거)
         "axis_counts": axis_counts,
         "calendar_events": cal_events,
         "constraint": constraint,

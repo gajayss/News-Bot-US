@@ -10,6 +10,7 @@ from .event_calendar import EventCalendarState
 from .market_context import MarketContextEngine, MarketScore
 from .models import NewsEvent, TradeSignal
 from .option_strategy import build_option_plan
+from .sector_map import get_sector_info
 from .source_reliability import (
     adjust_confidence,
     get_source_info,
@@ -142,6 +143,9 @@ class SignalOrchestrator:
         )
 
         for symbol in selected_symbols:
+            # 섹터/산업군 조회 (종목별)
+            _sector, _industry = get_sector_info(symbol)
+
             # --- STOCK signals (V4 영향 없이 뉴스 기반) ---
             stock_qty = self.base_qty
             if event.score <= self.neg_stock_threshold:
@@ -158,6 +162,8 @@ class SignalOrchestrator:
                         event_type=event.event_type,
                         axis_id=event.axis_id,
                         qty=stock_qty,
+                        sector=_sector,
+                        industry=_industry,
                     )
                 )
             elif event.score >= self.pos_stock_threshold:
@@ -174,6 +180,8 @@ class SignalOrchestrator:
                         event_type=event.event_type,
                         axis_id=event.axis_id,
                         qty=stock_qty,
+                        sector=_sector,
+                        industry=_industry,
                     )
                 )
 
@@ -256,6 +264,8 @@ class SignalOrchestrator:
                                 event_type=event.event_type,
                                 axis_id=event.axis_id,
                                 qty=self.base_qty,
+                                sector=_sector,
+                                industry=_industry,
                             )
                         )
                     continue  # skip option signal for this symbol
@@ -303,6 +313,8 @@ class SignalOrchestrator:
                             event_type=event.event_type,
                             axis_id=event.axis_id,
                             qty=plan.qty,
+                            sector=_sector,
+                            industry=_industry,
                             option_plan=plan.to_dict(),
                         )
                     )
@@ -363,6 +375,8 @@ class SignalOrchestrator:
                         option_expiry_type=plan.expiry_type,
                         option_right=option_right,
                         qty=plan.qty,
+                        sector=_sector,
+                        industry=_industry,
                         option_plan=plan_dict,
                     )
                 )

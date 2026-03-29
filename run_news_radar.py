@@ -30,6 +30,15 @@ SHORT_VOL_SCAN_SEC = 86400    # fintel 공매도 하루 1회
 ARK_TRADES_SCAN_SEC = 86400   # ARK 매매 하루 1회
 
 
+def _emit_signal(bus: DailyJsonBus, signal) -> None:
+    """시그널을 소비자용 daily 파일 + 선분이력 store 양쪽에 기록."""
+    target_file = "stock_signals" if signal.asset_class == "STOCK" else "option_signals"
+    sig_dict = signal.to_dict()
+    bus.append_item(target_file, sig_dict)        # 소비자용 (기존 호환)
+    result = bus.upsert_signal(sig_dict)          # 선분이력 store (중복 제거)
+    return result
+
+
 def _load_seen_ids(bus: DailyJsonBus) -> set[str]:
     """Rebuild seen set from today's news_events file (survives restart)."""
     seen: set[str] = set()
@@ -135,11 +144,10 @@ def main() -> None:
                                 event.score, event.symbols,
                             )
                             for signal in orchestrator.build_signals(event):
-                                target_file = "stock_signals" if signal.asset_class == "STOCK" else "option_signals"
-                                bus.append_item(target_file, signal.to_dict())
+                                r = _emit_signal(bus, signal)
                                 logger.warning(
-                                    "INSIDER SIGNAL %s %s %s qty=%d",
-                                    signal.asset_class, signal.symbol, signal.side, signal.qty,
+                                    "INSIDER SIGNAL %s %s %s qty=%d [%s]",
+                                    signal.asset_class, signal.symbol, signal.side, signal.qty, r,
                                 )
                 except Exception as exc:
                     logger.warning("Insider scan error: %s", exc)
@@ -164,12 +172,11 @@ def main() -> None:
                                 event.score, event.symbols, event.headline[:60],
                             )
                             for signal in orchestrator.build_signals(event):
-                                target_file = "stock_signals" if signal.asset_class == "STOCK" else "option_signals"
-                                bus.append_item(target_file, signal.to_dict())
+                                r = _emit_signal(bus, signal)
                                 logger.warning(
-                                    "WEB INSIDER SIGNAL %s %s %s qty=%d | %s",
+                                    "WEB INSIDER SIGNAL %s %s %s qty=%d | %s [%s]",
                                     signal.asset_class, signal.symbol, signal.side,
-                                    signal.qty, signal.reason[:60],
+                                    signal.qty, signal.reason[:60], r,
                                 )
                 except Exception as exc:
                     logger.warning("Web insider scan error: %s", exc)
@@ -193,11 +200,10 @@ def main() -> None:
                                 event.score, event.symbols, event.headline[:60],
                             )
                             for signal in orchestrator.build_signals(event):
-                                target_file = "stock_signals" if signal.asset_class == "STOCK" else "option_signals"
-                                bus.append_item(target_file, signal.to_dict())
+                                r = _emit_signal(bus, signal)
                                 logger.info(
-                                    "FJ SIGNAL %s %s %s qty=%d",
-                                    signal.asset_class, signal.symbol, signal.side, signal.qty,
+                                    "FJ SIGNAL %s %s %s qty=%d [%s]",
+                                    signal.asset_class, signal.symbol, signal.side, signal.qty, r,
                                 )
                 except Exception as exc:
                     logger.warning("FinancialJuice scan error: %s", exc)
@@ -227,11 +233,10 @@ def main() -> None:
                                 event.headline[:60],
                             )
                             for signal in orchestrator.build_signals(event):
-                                target_file = "stock_signals" if signal.asset_class == "STOCK" else "option_signals"
-                                bus.append_item(target_file, signal.to_dict())
+                                r = _emit_signal(bus, signal)
                                 logger.warning(
-                                    "ARK SIGNAL %s %s %s qty=%d",
-                                    signal.asset_class, signal.symbol, signal.side, signal.qty,
+                                    "ARK SIGNAL %s %s %s qty=%d [%s]",
+                                    signal.asset_class, signal.symbol, signal.side, signal.qty, r,
                                 )
                 except Exception as exc:
                     logger.warning("ARK trades scan error: %s", exc)
@@ -247,9 +252,8 @@ def main() -> None:
                 bus.append_item("news_events", event.to_dict())
                 logger.info("EVENT [%s/%s] %s score=%.2f symbols=%s", event.axis_id, event.event_type, event.direction, event.score, event.symbols)
                 for signal in orchestrator.build_signals(event):
-                    target_file = "stock_signals" if signal.asset_class == "STOCK" else "option_signals"
-                    bus.append_item(target_file, signal.to_dict())
-                    logger.info("SIGNAL %s %s %s qty=%d", signal.asset_class, signal.symbol, signal.side, signal.qty)
+                    r = _emit_signal(bus, signal)
+                    logger.info("SIGNAL %s %s %s qty=%d [%s]", signal.asset_class, signal.symbol, signal.side, signal.qty, r)
         except Exception as exc:
             logger.exception("news_radar loop error: %s", exc)
         time.sleep(config.NEWS_POLL_SEC)

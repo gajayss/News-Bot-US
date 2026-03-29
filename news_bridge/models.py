@@ -6,6 +6,9 @@ from typing import Any
 from uuid import uuid4
 
 
+SIGNAL_OPEN_SENTINEL = "9999-12-31T23:59:59"  # 활성 시그널의 종료일시 기본값
+
+
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -52,6 +55,9 @@ class TradeSignal:
     reference_price: float = 0.0
     qty: int = 1
     created_at: str = field(default_factory=utc_now_iso)
+    expired_at: str = SIGNAL_OPEN_SENTINEL  # 활성: 9999-12-31T23:59:59, 종료시 실제 시각으로 update
+    sector: str = ""      # 섹터 ETF (XLK, XLV, XLE ...)
+    industry: str = ""    # 산업군 한글 (반도체, 바이오 ...)
     option_plan: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
