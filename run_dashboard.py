@@ -569,11 +569,14 @@ th{position:relative}
     <div class="stats" id="stb"></div>
   </div>
 
-  <!-- ④ 경제 캘린더 — 나머지 공간, 5축 박스 높이에 맞춰 내부 스크롤 -->
-  <div class="pnl" id="cal-panel" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
-    <div class="ph" id="cal-ph"><b>경제 캘린더</b><small id="cc"></small></div>
-    <div class="cal-fbar" id="cal-fbar"></div>
-    <div id="cb" style="overflow-y:auto;flex:1;min-height:0"></div>
+  <!-- ④ 캘린더 spacer: flex:1 으로 가로 공간만 차지, 높이는 0 (Row0 높이 계산 제외)
+       cal-panel 은 absolute 로 spacer 를 꽉 채움 → Row0 높이에 영향 없음 -->
+  <div style="flex:1;min-width:0;position:relative">
+    <div class="pnl" id="cal-panel" style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden">
+      <div class="ph" id="cal-ph"><b>경제 캘린더</b><small id="cc"></small></div>
+      <div class="cal-fbar" id="cal-fbar"></div>
+      <div id="cb" style="overflow-y:auto;flex:1;min-height:0"></div>
+    </div>
   </div>
 
 </div>
@@ -903,17 +906,6 @@ const OPEN_SENTINEL='9999-12-31T23:59:59';
 let sigFilter='active';   // active | today | 3day | all
 let assetFilter='all';    // all | STOCK | OPTION
 let sideFilter='all';     // all | BUY_PUT | BUY_CALL | SELL
-
-/* ── 캘린더 높이 = 5축 박스 높이에 동기화 ── */
-function syncCalHeight(){
-  const axisPanel=document.getElementById('axis-panel');
-  const calPanel=document.getElementById('cal-panel');
-  if(!axisPanel||!calPanel) return;
-  const h=axisPanel.offsetHeight;
-  calPanel.style.height=h+'px';
-  calPanel.style.maxHeight=h+'px';
-}
-window.addEventListener('resize',syncCalHeight);
 
 /* ── 좌측 네비 전환 (IBEX_US 스타일) ── */
 const TAB_TITLES={signals:'매매 시그널',news:'뉴스 이벤트',constraint:'진입 제약'};
@@ -1523,8 +1515,6 @@ if(lnavSc) lnavSc.textContent=allSigs.length;
 const cl=d.calendar_events||[];
 document.getElementById('cc').textContent=cl.length+'건';
 renderCalendar(cl);
-// 캘린더 렌더 후 5축 높이에 맞춤
-setTimeout(syncCalHeight, 0);
 
 const con=d.constraint||{};let cx;
 if(con.constrained){const cc2=con.action==='BLOCK'?'#ef4444':con.action==='REDUCE'?'#f97316':'#eab308';
