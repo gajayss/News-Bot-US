@@ -478,28 +478,37 @@ th{position:relative}
 .cfbtn[data-k="EARNINGS"].on{background:#1e1b4b;border-color:#6366f1;color:#a5b4fc}
 .cfbtn[data-k="ALL"].on{background:#1e293b;border-color:#475569;color:#f1f5f9}
 
-/* 날짜 구분선 — FJ 스타일 */
-.cal-day-hdr{display:flex;align-items:center;gap:6px;padding:7px 10px 3px}
-.cal-day-hdr .cdl{flex:1;height:1px;background:rgba(255,255,255,.07)}
-.cal-day-hdr .cdt{white-space:nowrap;font-weight:700;font-size:11px;color:#334155;letter-spacing:.5px}
+/* 날짜 구분선 */
+.cal-day-hdr{display:flex;align-items:center;gap:6px;padding:8px 10px 4px;grid-column:1/-1}
+.cal-day-hdr .cdl{flex:1;height:1px;background:rgba(255,255,255,.12)}
+.cal-day-hdr .cdt{white-space:nowrap;font-weight:700;font-size:12px;color:#94a3b8;letter-spacing:.5px}
 
-/* 이벤트 한 줄 row — 박스 없음 */
-.cal-row{display:flex;align-items:center;gap:7px;padding:4px 10px;border-top:1px solid rgba(255,255,255,.03);font-size:12px;line-height:1.3}
-.cal-row:hover{background:rgba(255,255,255,.025)}
-.cal-row.past{opacity:.28}
-.cal-row.urgent{background:rgba(239,68,68,.07)}
-.cal-imp-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.cal-time{color:#475569;font-size:11px;min-width:38px;flex-shrink:0;font-variant-numeric:tabular-nums}
-.cal-cat-tag{padding:1px 5px;border-radius:2px;font-size:10px;font-weight:700;flex-shrink:0;letter-spacing:.3px}
-.cal-ename{color:#94a3b8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 2열 그리드 컨테이너 */
+.cal-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0}
+
+/* 이벤트 한 줄 row */
+.cal-row{display:flex;align-items:center;gap:7px;padding:5px 10px;border-top:1px solid rgba(255,255,255,.05);font-size:14px;line-height:1.4}
+.cal-row:hover{background:rgba(255,255,255,.04)}
+.cal-row.past{opacity:.32}
+.cal-row.urgent{background:rgba(239,68,68,.08)}
+.cal-imp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cal-time{color:#94a3b8;font-size:13px;min-width:42px;flex-shrink:0;font-variant-numeric:tabular-nums;font-weight:600}
+.cal-cat-tag{padding:2px 6px;border-radius:3px;font-size:11px;font-weight:700;flex-shrink:0;letter-spacing:.3px}
+.cal-ename{color:#e2e8f0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .cal-ename.urg{color:#fca5a5}
-.cal-vals-inline{display:flex;gap:4px;flex-shrink:0;font-size:11px;font-variant-numeric:tabular-nums;align-items:center}
-.cv-act{color:#94a3b8;font-weight:600}
+.cal-vals-inline{display:flex;gap:5px;flex-shrink:0;font-size:12px;font-variant-numeric:tabular-nums;align-items:center}
+.cv-act{color:#cbd5e1;font-weight:700}
 .cv-act.beat{color:#4ade80}
 .cv-act.miss{color:#f87171}
-.cv-fcst{color:#60a5fa}
-.cv-prev{color:#475569}
-.cv-sep{color:#1e293b;font-size:10px}
+.cv-fcst{color:#93c5fd}
+.cv-prev{color:#64748b}
+.cv-sep{color:#334155;font-size:11px}
+
+/* 캘린더 스크롤바 */
+#cb{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+#cb::-webkit-scrollbar{width:5px}
+#cb::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+#cb::-webkit-scrollbar-track{background:transparent}
 
 /* Animated SVG clock */
 .clk-wrap{display:flex;align-items:center;gap:4px}
@@ -842,6 +851,7 @@ function renderCalendar(events){
     const dow=fmtDayOfWeek(dk);
     // 날짜 구분선 (FJ 스타일)
     h+=`<div class="cal-day-hdr"><div class="cdl"></div><div class="cdt">── ${dk} (${dow}) ──</div><div class="cdl"></div></div>`;
+    h+=`<div class="cal-grid2">`;
     for(const ev of byDate[dk]){
       const ps=ev.status==='PAST';
       const hu=ev.hours_until||0;
@@ -880,6 +890,7 @@ ${valHtml}
 ${!ps?clockSvg(hu):''}
 </div>`;
     }
+    h+=`</div>`;
   }
   document.getElementById('cb').innerHTML=h||'<div style="padding:14px;color:var(--td);font-size:12px">이벤트 없음</div>';
 }
