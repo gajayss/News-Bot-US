@@ -254,7 +254,12 @@ th{position:relative}
 
 /* Badges */
 .b{display:inline-block;padding:3px 9px;border-radius:4px;font:700 13px/1.4 inherit}
-.bb{background:#14532d;color:#4ade80}.br{background:#7f1d1d;color:#fca5a5}.bn{background:#1f2937;color:#6b7280}
+/* 4색 방향 뱃지: Stock Buy=Green, Option Buy=Yellow, Stock Sell=Red, Option Sell=Blue */
+.bsg{background:#14532d;color:#4ade80}        /* Stock BUY_CALL — Green */
+.bsy{background:#713f12;color:#fde68a}        /* Option BUY (PUT/CALL) — Yellow */
+.bsr{background:#7f1d1d;color:#fca5a5}        /* Stock SELL — Red */
+.bsb{background:#1e3a5f;color:#93c5fd}        /* Option SELL — Blue */
+.bn{background:#1f2937;color:#6b7280}
 .bx{padding:3px 9px;border-radius:4px;font:700 12px/1.4 inherit}
 .sp{color:#4ade80;font-weight:700}.sn{color:#f87171;font-weight:700}.sz{color:var(--td)}
 .sym{font:700 15px/1 inherit;color:var(--tw)}
@@ -288,6 +293,19 @@ th{position:relative}
 .sfbtn{padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--td);transition:all .15s}
 .sfbtn.on{background:#1e40af;color:#93c5fd;border-color:#3b82f6}
 .sfbtn:hover:not(.on){background:rgba(255,255,255,.06);color:var(--tw)}
+/* Asset class filter (전체/STOCK/OPTION) */
+.afbtn{padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--td);transition:all .15s}
+.afbtn.on{background:#134e4a;color:#5eead4;border-color:#14b8a6}
+.afbtn:hover:not(.on){background:rgba(255,255,255,.06);color:var(--tw)}
+/* Emoji side-filter bar */
+.emj-bar{display:flex;gap:6px;padding:7px 16px;border-bottom:1px solid var(--bdr);align-items:center;flex-wrap:wrap}
+.emjbtn{padding:4px 12px;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid transparent;background:rgba(255,255,255,.04);color:var(--t);transition:all .15s;white-space:nowrap}
+.emjbtn.on{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:var(--tw)}
+.emjbtn:hover:not(.on){background:rgba(255,255,255,.08)}
+/* ROC (변화율) cell */
+.roc-up{color:#4ade80;font-weight:700;font-size:12px}
+.roc-dn{color:#f87171;font-weight:700;font-size:12px}
+.roc-na{color:var(--td);font-size:11px}
 
 /* Sector badge */
 .sec{display:inline-block;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:600;background:rgba(99,102,241,.15);color:#a5b4fc}
@@ -370,29 +388,40 @@ th{position:relative}
 <div class="src" id="srcb"></div>
 </div>
 
-<!-- Row 1 Left: 매매 시그널 (이전 위치에서 위로) -->
+<!-- Row 1 Left: 매매 시그널 -->
 <div class="pnl">
 <div class="ph"><b>매매 시그널</b><small id="sc"></small>
-<div style="display:flex;gap:6px;align-items:center">
-<span style="font-size:11px;color:var(--td)">필터:</span>
+<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+<button id="af_all"    onclick="setAssetFilter('all')"    class="afbtn on">전체</button>
+<button id="af_STOCK"  onclick="setAssetFilter('STOCK')"  class="afbtn">📌 STOCK</button>
+<button id="af_OPTION" onclick="setAssetFilter('OPTION')" class="afbtn">⚡ OPTION</button>
+<span style="width:1px;background:var(--bdr);height:16px;display:inline-block;margin:0 2px"></span>
 <button id="sf_active" onclick="setSigFilter('active')" class="sfbtn on">활성만</button>
 <button id="sf_today"  onclick="setSigFilter('today')"  class="sfbtn">오늘</button>
 <button id="sf_3day"   onclick="setSigFilter('3day')"   class="sfbtn">3일</button>
 <button id="sf_all"    onclick="setSigFilter('all')"    class="sfbtn">전체</button>
 </div></div>
-<div class="desc"><b>BUY_PUT</b>=풋매수(하락 베팅) <b>BUY_CALL</b>=콜매수(상승 베팅) <b>SELL</b>=주식 매도. 선분이력 관리: 동일(종목+방향) 열린 시그널은 중복 미등록.</div>
+<!-- 이모지 필터바 — 클릭 시 해당 사이드만 표시 (다시 클릭 시 해제) -->
+<div class="emj-bar">
+<span style="font-size:11px;color:var(--td);margin-right:4px">유형 필터:</span>
+<button id="emj_all"      onclick="setSideFilter('all')"      class="emjbtn on">🔲 전체</button>
+<button id="emj_BUY_PUT"  onclick="setSideFilter('BUY_PUT')"  class="emjbtn">📉 BUY_PUT <span style="font-size:10px;color:var(--td)">풋매수·하락베팅</span></button>
+<button id="emj_BUY_CALL" onclick="setSideFilter('BUY_CALL')" class="emjbtn">📈 BUY_CALL <span style="font-size:10px;color:var(--td)">콜매수·상승베팅</span></button>
+<button id="emj_SELL"     onclick="setSideFilter('SELL')"     class="emjbtn">💸 SELL <span style="font-size:10px;color:var(--td)">주식매도</span></button>
+</div>
 <div class="pb"><table id="st"><thead><tr>
 <th data-c="0" data-t="s" style="width:60px">종목<div class="rz"></div></th>
 <th data-c="1" data-t="s" style="width:55px">섹터<div class="rz"></div></th>
 <th data-c="2" data-t="s" style="width:70px">산업군<div class="rz"></div></th>
 <th data-c="3" data-t="s" style="width:90px">방향<div class="rz"></div></th>
-<th data-c="4" data-t="s" style="width:60px">유형<div class="rz"></div></th>
+<th data-c="4" data-t="s" style="width:55px">유형<div class="rz"></div></th>
 <th data-c="5" data-t="s" style="width:70px">축<div class="rz"></div></th>
 <th data-c="6" data-t="n" class="r" style="width:40px">수량<div class="rz"></div></th>
 <th data-c="7" data-t="n" class="r" style="width:50px">강도<div class="rz"></div></th>
-<th data-c="8" data-t="s" style="width:85px">발생일시<div class="rz"></div></th>
-<th data-c="9" data-t="s" style="width:85px">종료<div class="rz"></div></th>
-<th data-c="10" data-t="s">사유<div class="rz"></div></th>
+<th data-c="8" data-t="n" class="r" style="width:65px" title="동일 종목 이전 시그널 대비 강도 변화율 — 가속도 측정">변화율%<div class="rz"></div></th>
+<th data-c="9" data-t="s" style="width:85px">발생일시<div class="rz"></div></th>
+<th data-c="10" data-t="s" style="width:85px">종료<div class="rz"></div></th>
+<th data-c="11" data-t="s">사유<div class="rz"></div></th>
 </tr></thead><tbody id="sb"></tbody></table></div></div>
 
 <!-- Row 1 Right: RRG 뉴스 상대강도 (NEW) -->
@@ -659,7 +688,9 @@ ${valHtml}
 
 let ss={};
 const OPEN_SENTINEL='9999-12-31T23:59:59';
-let sigFilter='active';  // 활성만 | today | 3day | all
+let sigFilter='active';   // active | today | 3day | all
+let assetFilter='all';    // all | STOCK | OPTION
+let sideFilter='all';     // all | BUY_PUT | BUY_CALL | SELL
 
 function setSigFilter(f){
   sigFilter=f;
@@ -668,30 +699,94 @@ function setSigFilter(f){
   if(window._lastSignals) renderSignals(window._lastSignals);
 }
 
+function setAssetFilter(f){
+  assetFilter=f;
+  document.querySelectorAll('.afbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('af_'+f).classList.add('on');
+  if(window._lastSignals) renderSignals(window._lastSignals);
+}
+
+function setSideFilter(f){
+  // 같은 버튼 다시 클릭 시 해제 (토글)
+  sideFilter=(sideFilter===f)?'all':f;
+  document.querySelectorAll('.emjbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('emj_'+(sideFilter==='all'?'all':sideFilter)).classList.add('on');
+  if(window._lastSignals) renderSignals(window._lastSignals);
+}
+
+/* ----------------------------------------------------------------
+ * sideBadgeClass — asset_class + side 조합으로 4색 뱃지 결정
+ * Stock  BUY_CALL → Green  (.bsg)
+ * Option BUY_PUT/BUY_CALL → Yellow (.bsy)
+ * Stock  SELL     → Red    (.bsr)
+ * Option SELL     → Blue   (.bsb)
+ * ---------------------------------------------------------------- */
+function sideBadgeClass(side, ac){
+  const isBuy=side.includes('BUY');
+  const isStk=(ac==='STOCK');
+  if(isStk && isBuy)  return 'bsg';
+  if(!isStk && isBuy) return 'bsy';
+  if(isStk && !isBuy) return 'bsr';
+  return 'bsb';
+}
+
+/* ----------------------------------------------------------------
+ * buildRocMap — 동일(종목+방향) 시그널 간 강도 변화율% 사전 계산
+ * RRG 4계절처럼 "가속도(기울기)"를 측정:
+ *   처음 약하게 시작 → 점점 강해지면 → 확신 신호
+ *   반대로 감속 → 전환 경고
+ * ---------------------------------------------------------------- */
+function buildRocMap(allSigs){
+  const byKey={};
+  // created_at 오름차순 정렬
+  const sorted=[...allSigs].sort((a,b)=>(a.created_at||'')>(b.created_at||'')?1:-1);
+  for(const s of sorted){
+    const key=(s.symbol||'')+'|'+(s.side||'');
+    (byKey[key]=byKey[key]||[]).push(s);
+  }
+  const rocMap={};
+  for(const sigs of Object.values(byKey)){
+    for(let i=0;i<sigs.length;i++){
+      const s=sigs[i];
+      const id=s.signal_id||(s.symbol+s.created_at);
+      if(i===0){rocMap[id]=null;}  // 신규 — 이전 없음
+      else{
+        const ps=sigs[i-1].strength||0;
+        const cs=s.strength||0;
+        rocMap[id]=(ps===0)?null:((cs-ps)/Math.abs(ps)*100);
+      }
+    }
+  }
+  return rocMap;
+}
+
 
 function renderSignals(sigs){
   window._lastSignals=sigs;
   const now=new Date();
+  // ROC 사전 계산 — 전체 sigs 기준 (필터 전)
+  const rocMap=buildRocMap(sigs);
+
   const filtered=sigs.filter(s=>{
     const ea=s.expired_at||OPEN_SENTINEL;
     const ca=s.created_at||'';
     const isActive=(ea===OPEN_SENTINEL);
-    if(sigFilter==='active') return isActive;
-    if(sigFilter==='today'){
-      const t=new Date(ca);
-      return t.toDateString()===now.toDateString();
-    }
-    if(sigFilter==='3day'){
-      const t=new Date(ca);
-      return (now-t)<3*86400*1000;
-    }
-    return true; // all
+    // 기간 필터
+    if(sigFilter==='active' && !isActive) return false;
+    if(sigFilter==='today' && new Date(ca).toDateString()!==now.toDateString()) return false;
+    if(sigFilter==='3day' && (now-new Date(ca))>3*86400*1000) return false;
+    // 자산유형 필터
+    if(assetFilter!=='all' && s.asset_class!==assetFilter) return false;
+    // 방향 필터
+    if(sideFilter!=='all' && s.side!==sideFilter) return false;
+    return true;
   });
-  const rev=filtered.slice().reverse();
+
+  // 발생일시 내림차순 (최신 상단)
+  const rev=filtered.slice().sort((a,b)=>(b.created_at||'')>(a.created_at||'')?1:-1);
   let sh='';
   for(const s of rev){
-    const ib=s.side&&s.side.includes('BUY');
-    const ac=AC[s.axis_id||'UNKNOWN']||'#4b5563';
+    const axColor=AC[s.axis_id||'UNKNOWN']||'#4b5563';
     const ea=s.expired_at||OPEN_SENTINEL;
     const isActive=(ea===OPEN_SENTINEL);
     const expBadge=isActive
@@ -699,19 +794,38 @@ function renderSignals(sigs){
       :`<span class="bexp" title="${ea}">${fmtDateTime(ea)}</span>`;
     const sect=s.sector||'';
     const ind=s.industry||'';
+
+    // 4색 방향 뱃지
+    const bc=sideBadgeClass(s.side||'',s.asset_class||'');
+
+    // 변화율% — RRG 가속도 개념 (동일 종목+방향의 이전 시그널 대비)
+    const sigId=s.signal_id||(s.symbol+s.created_at);
+    const roc=rocMap[sigId];
+    let rocCell,rocVal=0;
+    if(roc===null||roc===undefined){
+      rocCell='<td class="r roc-na" data-v="0">신규</td>';
+    } else {
+      rocVal=roc;
+      const arrow=roc>0?'▲':'▼';
+      const cls=roc>0?'roc-up':'roc-dn';
+      rocCell=`<td class="r ${cls}" data-v="${roc.toFixed(1)}">${arrow}${Math.abs(roc).toFixed(1)}%</td>`;
+    }
+
     sh+=`<tr>
 <td class="sym">${s.symbol||''}</td>
 <td><span class="sec">${sect}</span></td>
 <td class="ind">${ind}</td>
-<td><span class="b ${ib?'bb':'br'}">${s.side||''}</span></td>
-<td style="font-size:12px">${s.asset_class||''}</td>
-<td><span class="bx" style="background:${ac}18;color:${ac};font-size:11px">${s.axis_id||''}</span></td>
+<td><span class="b ${bc}">${s.side||''}</span></td>
+<td style="font-size:11px;color:var(--td)">${s.asset_class||''}</td>
+<td><span class="bx" style="background:${axColor}18;color:${axColor};font-size:11px">${s.axis_id||''}</span></td>
 <td class="r" data-v="${s.qty||1}">${s.qty||1}</td>
 <td class="r" data-v="${s.strength||0}">${(s.strength||0).toFixed(2)}</td>
+${rocCell}
 <td style="font-size:11px;color:var(--td)">${fmtDateTime(s.created_at||'')}</td>
 <td>${expBadge}</td>
-<td class="rsn" title="${(s.reason||'').replace(/"/g,'&quot;')}">${(s.reason||'').substring(0,50)}</td></tr>`}
-  document.getElementById('sb').innerHTML=sh||'<tr><td colspan="11" style="color:var(--td);padding:20px;text-align:center">시그널 대기중...</td></tr>';
+<td class="rsn" title="${(s.reason||'').replace(/"/g,'&quot;')}">${(s.reason||'').substring(0,50)}</td></tr>`;
+  }
+  document.getElementById('sb').innerHTML=sh||'<tr><td colspan="12" style="color:var(--td);padding:20px;text-align:center">시그널 대기중...</td></tr>';
 }
 
 document.querySelectorAll('th[data-c]').forEach(h=>{
@@ -1010,8 +1124,9 @@ nh+=`<tr><td><span class="bx" style="background:${c}18;color:${c}">${e.axis_id||
 document.getElementById('nb').innerHTML=nh;
 
 // 시그널 렌더링 — 선분이력 기반 필터 적용
-renderSignals(d.all_signals||[]);
-document.getElementById('sc').textContent=(d.all_signals||[]).length+'건';
+const allSigs=d.all_signals||[];
+renderSignals(allSigs);
+document.getElementById('sc').textContent=allSigs.length+'건';
 
 const cl=d.calendar_events||[];
 document.getElementById('cc').textContent=cl.length+'건';
