@@ -525,10 +525,10 @@ th{position:relative}
 <body>
 <div class="wrap">
 
-<!-- Row 0: [공포&탐욕 + MARKET REGIME 좌측] + [5축 뉴스 분류 우측] -->
+<!-- Row 0: [공포&탐욕+REGIME 좌] + [5축 뉴스분류 중앙(compact)] + [경제캘린더 우(flex:1)] -->
 <div class="fw" style="display:flex;gap:10px;align-items:stretch">
 
-  <!-- 좌측: 공포&탐욕 + MARKET REGIME (세로 스택) -->
+  <!-- 좌측: 공포&탐욕 + MARKET REGIME (세로 스택, 240px 고정) -->
   <div style="display:flex;flex-direction:column;gap:10px;width:240px;flex-shrink:0">
     <div class="pnl" style="flex:1">
     <div class="ph" style="padding:7px 14px">
@@ -546,21 +546,26 @@ th{position:relative}
     </div>
   </div>
 
-  <!-- 우측: 5축 뉴스 분류 -->
-  <div class="pnl" style="flex:1;min-width:0">
+  <!-- 중앙: 5축 뉴스 분류 (내용에 맞게 자동 너비, 최소 360px) -->
+  <div class="pnl" style="flex:0 1 auto;min-width:360px">
   <div class="ph">
-    <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <b>5축 뉴스 분류</b><small id="te"></small>
       <span style="font-size:11px;color:var(--td)"><span class="dot"></span> {{ source_mode }} · {{ watchlist_count }}종목</span>
       <span id="rt" style="font-size:11px;color:var(--td)"></span>
     </div>
   </div>
-  <div class="desc"><b>GOVERN</b>(정부/전쟁) > <b>FEDWALL</b>(연준/월가) > <b>ECONOMY</b>(경제지표) > <b>CORPORATE</b>(기업/내부자/헤지펀드) > <b>THEME</b>(테마/신기술) 순 우선순위</div>
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px">
-    <div class="axr" id="ab" style="flex:1;min-width:180px"></div>
-    <div class="stats" id="stb" style="flex:1;min-width:180px"></div>
-  </div>
+  <div class="desc" style="font-size:11px"><b>GOVERN</b> &gt; <b>FEDWALL</b> &gt; <b>ECONOMY</b> &gt; <b>CORPORATE</b> &gt; <b>THEME</b> 순 우선순위</div>
+  <div class="axr" id="ab"></div>
+  <div class="stats" id="stb" style="grid-template-columns:repeat(4,1fr);padding:8px 14px"></div>
   <div class="src" id="srcb"></div>
+  </div>
+
+  <!-- 우측: 경제 캘린더 (남은 공간 모두 차지) -->
+  <div class="pnl" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+  <div class="ph"><b>경제 캘린더</b><small id="cc"></small></div>
+  <div class="cal-fbar" id="cal-fbar"></div>
+  <div class="pb" id="cb" style="flex:1;overflow-y:auto"></div>
   </div>
 
 </div>
@@ -623,18 +628,11 @@ th{position:relative}
 <th data-c="7" data-t="s">헤드라인 + 한글요약<span class="sa"></span><div class="rz"></div></th>
 </tr></thead><tbody id="nb"></tbody></table></div></div>
 
-<!-- Row 2 Right: 캘린더 + 제약 -->
-<div style="display:flex;flex-direction:column;gap:14px">
-<div class="pnl" style="flex:1">
-<div class="ph"><b>경제 캘린더</b><small id="cc"></small></div>
-<div class="cal-fbar" id="cal-fbar"></div>
-<div class="pb" style="max-height:540px" id="cb"></div>
-</div>
+<!-- Row 2 Right: 진입 제약 -->
 <div class="pnl">
 <div class="ph"><b>진입 제약</b></div>
 <div class="desc">FOMC/NFP 등 고충격 이벤트 전 자동 차단.</div>
 <div id="xb"></div>
-</div>
 </div>
 
 </div>
