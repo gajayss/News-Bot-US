@@ -478,16 +478,19 @@ th{position:relative}
 .cfbtn[data-k="EARNINGS"].on{background:#1e1b4b;border-color:#6366f1;color:#a5b4fc}
 .cfbtn[data-k="ALL"].on{background:#1e293b;border-color:#475569;color:#f1f5f9}
 
-/* 날짜 구분선 */
-.cal-day-hdr{display:flex;align-items:center;gap:6px;padding:8px 10px 4px;grid-column:1/-1}
-.cal-day-hdr .cdl{flex:1;height:1px;background:rgba(255,255,255,.12)}
+/* 날짜 구분선 — 좌측 정렬 */
+.cal-day-hdr{display:flex;align-items:center;gap:8px;padding:10px 12px 4px;grid-column:1/-1;border-top:1px solid rgba(255,255,255,.10)}
+.cal-day-hdr .cdl{flex:1;height:1px;background:rgba(255,255,255,.10)}
 .cal-day-hdr .cdt{white-space:nowrap;font-weight:700;font-size:12px;color:#94a3b8;letter-spacing:.5px}
+.cal-day-hdr .cdl-left{display:none}
 
 /* 2열 그리드 컨테이너 */
-.cal-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.cal-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid rgba(255,255,255,.07)}
+/* 우측 컬럼 경계선 — 짝수 번째 .cal-row 에 left border */
+.cal-grid2 .cal-row:nth-child(even){border-left:1px solid rgba(255,255,255,.10)}
 
 /* 이벤트 한 줄 row */
-.cal-row{display:flex;align-items:center;gap:7px;padding:5px 10px;border-top:1px solid rgba(255,255,255,.05);font-size:14px;line-height:1.4}
+.cal-row{display:flex;align-items:center;gap:7px;padding:5px 10px;border-top:1px solid rgba(255,255,255,.06);font-size:14px;line-height:1.4}
 .cal-row:hover{background:rgba(255,255,255,.04)}
 .cal-row.past{opacity:.32}
 .cal-row.urgent{background:rgba(239,68,68,.08)}
@@ -850,7 +853,7 @@ function renderCalendar(events){
   for(const dk of dateKeys){
     const dow=fmtDayOfWeek(dk);
     // 날짜 구분선 (FJ 스타일)
-    h+=`<div class="cal-day-hdr"><div class="cdl"></div><div class="cdt">── ${dk} (${dow}) ──</div><div class="cdl"></div></div>`;
+    h+=`<div class="cal-day-hdr"><div class="cdt">📅 ${dk} (${dow})</div><div class="cdl"></div></div>`;
     h+=`<div class="cal-grid2">`;
     for(const ev of byDate[dk]){
       const ps=ev.status==='PAST';
