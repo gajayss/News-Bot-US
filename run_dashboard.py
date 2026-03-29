@@ -439,8 +439,8 @@ th{position:relative}
 .stat .sv{font:700 24px/1.2 inherit;color:var(--tw)}
 .stat .sl{font-size:11px;color:var(--td);margin-top:2px}
 
-/* RRG */
-.rrg-wrap{position:relative;width:100%;height:540px;overflow:hidden}
+/* RRG — 뷰포트 기반 동적 높이 (Row0+시그널헤더 제외 나머지 채움) */
+.rrg-wrap{position:relative;width:100%;height:calc(100vh - 290px);min-height:420px;overflow:hidden}
 #rrg-plot{width:100%;height:100%}
 
 /* Signal filter buttons */
@@ -516,28 +516,28 @@ th{position:relative}
 <body>
 <div class="wrap">
 
-<!-- Row 0: 3열 레이아웃 (참고 게이지 좌 | 5축 중 | 캘린더 우) -->
+<!-- Row 0: [F&G | MARKET REGIME | 5축 | 캘린더] — 모두 가로 배치, 높이 최소화 -->
 <div class="fw" style="display:flex;gap:10px;align-items:stretch">
 
-  <!-- ① 좌측 열: 공포&탐욕(위) + MARKET REGIME(아래) — 230px 고정 -->
-  <div style="display:flex;flex-direction:column;gap:10px;width:230px;flex-shrink:0">
-    <div class="pnl" style="flex:1;min-height:0">
-      <div class="ph" style="padding:7px 14px">
-        <span style="font-size:12px;color:var(--td)">● 공포 &amp; 탐욕 지수</span>
-        <small>DAILY</small>
-      </div>
-      <div id="fng-body" style="padding:8px 14px 10px">로딩중…</div>
+  <!-- ① F&G 게이지 (170px 고정) -->
+  <div class="pnl" style="width:170px;flex-shrink:0">
+    <div class="ph" style="padding:5px 10px">
+      <span style="font-size:11px;color:var(--td)">● 공포 &amp; 탐욕</span>
+      <small>DAILY</small>
     </div>
-    <div class="pnl" style="flex:1;min-height:0">
-      <div class="ph" style="padding:7px 14px">
-        <span style="font-size:12px;color:#ef4444">● MARKET REGIME</span>
-        <small id="regime-ts">—</small>
-      </div>
-      <div id="regime-body" style="padding:8px 14px 10px">로딩중…</div>
-    </div>
+    <div id="fng-body" style="padding:4px 8px 8px"></div>
   </div>
 
-  <!-- ② 중앙 열: 5축 뉴스 분류 — 420px 고정, 전체 높이 -->
+  <!-- ② MARKET REGIME (230px 고정) -->
+  <div class="pnl" style="width:230px;flex-shrink:0">
+    <div class="ph" style="padding:5px 10px">
+      <span style="font-size:11px;color:#ef4444">● MARKET REGIME</span>
+      <small id="regime-ts">—</small>
+    </div>
+    <div id="regime-body" style="padding:4px 8px 8px"></div>
+  </div>
+
+  <!-- ③ 5축 뉴스 분류 — 420px 고정 -->
   <div class="pnl" style="width:420px;flex-shrink:0">
     <div class="ph">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1050,48 +1050,31 @@ function renderRegimePanel(rm){
     </div>`;
 
   document.getElementById('regime-ts').textContent=rm.last_updated||'—';
+  // 국면 뱃지
+  const blinkStyle=(rm.regime==='BEAR'||rm.regime==='BEAR_WATCH')?'animation:rgm-blink 1s infinite':'';
+  const dirHtml=`<span style="color:${dc.color};font-size:10px;margin-left:6px">${dc.icon} ${dc.label}</span>`;
+  // 2열 컴팩트 그리드 (4행)
+  const cell2=(lbl,val)=>`<div style="padding:2px 0;border-bottom:1px solid #0d1117">
+    <div style="font-size:9px;color:#334155">${lbl}</div>
+    <div style="font-size:11px;font-weight:700;font-family:monospace;color:var(--tw)">${val}</div>
+  </div>`;
   document.getElementById('regime-body').innerHTML=`
-  <div style="display:flex;gap:10px">
-    <!-- 좌: 데이터 행 -->
-    <div style="flex:1;min-width:0">
-      ${row('VIX',`<span style="background:${rm.vix_grade_color||'#64748b'}22;color:${rm.vix_grade_color||'#64748b'};border:1px solid ${rm.vix_grade_color||'#64748b'}44;border-radius:3px;padding:1px 6px;font-size:11px">${rm.vix_grade||'—'}</span> ${(rm.vix||0).toFixed(1)}`)}
-      ${row('US10Y',(rm.tnx_value||0).toFixed(3)+'%',tnxWarn+tnxChgStr)}
-      ${row('F&G',`${Math.round(rm.fng_score||50)}${miniBars(rm.fng_score||50)}`)}
-      ${rm.put_call_score!=null?row('P/C Ratio',`${rm.put_call_score}${miniBars(rm.put_call_score)}`,''):''}
-      ${row('Slope',chgFmt(rm.market_slope||0)+` <span style="font-size:10px;color:#475569">5일</span>`)}
-      ${row('Risk',`${(rm.composite||1).toFixed(2)} <span style="font-size:10px;color:#475569">/ 3.0</span>`)}
-      ${row('SPY',chgFmt(rm.spy_chg||0))}
-      ${row('QQQ',chgFmt(rm.qqq_chg||0))}
-      <!-- E1:E2 바 -->
-      <div style="margin-top:5px">
-        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
-          <span style="color:#22c55e">E1 ${e1}%</span><span style="color:#f59e0b">E2 ${e2}%</span>
-        </div>
-        <div style="height:6px;border-radius:3px;background:#0c0f14;overflow:hidden;border:1px solid #1e2736">
-          <div style="height:100%;background:linear-gradient(to right,#22c55e ${e1}%,#f59e0b ${e1}%);transition:width .5s"></div>
-        </div>
-      </div>
-    </div>
-    <!-- 우: 5단계 국면 인디케이터 -->
-    <div style="display:flex;flex-direction:column;gap:3px;min-width:80px">
-      ${rows.map(([k])=>{
-        const cfg2=REGIME_CFG[k]; const act=k===rm.regime;
-        const blk2=act&&(k==='BEAR'||k==='BEAR_WATCH')?';animation:rgm-blink 1s infinite':'';
-        return `<div style="padding:4px 8px;border-radius:4px;font-size:11px;font-family:monospace;font-weight:${act?700:400};
-          background:${act?cfg2.bg:'#0d1117'};color:${act?cfg2.color:'#2d3d52'};
-          border:1px solid ${act?cfg2.color+'44':'#1a2030'}${blk2}">
-          ${cfg2.label}<br><span style="font-size:9px;color:${act?cfg2.color:'#1e2736'}">E1:${rows.find(r=>r[0]===k)[4]}</span>
-        </div>`;
-      }).join('')}
-    </div>
+  <!-- 국면 뱃지 -->
+  <div style="padding:4px 0 6px;border-bottom:1px solid #1e2736;margin-bottom:6px">
+    <span style="padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;font-family:monospace;
+      background:${rc.bg};color:${rc.color};border:1px solid ${rc.color}44;${blinkStyle}">${rc.label}</span>
+    ${dirHtml}
   </div>
-  <!-- Regime → Direction 맵 -->
-  <div style="margin-top:8px;border-top:1px solid #1e2736;padding-top:6px">
-    <div style="font-size:10px;color:#334155;margin-bottom:4px;letter-spacing:.05em">REGIME → DIRECTION MAP</div>
-    ${tableRows}
-    <div style="display:grid;grid-template-columns:90px 52px 36px 36px 36px 36px;gap:2px;margin-top:3px">
-      ${['','Dir','Long','Short','E1','E2'].map(h=>`<span style="font-size:8px;color:#1e2736;text-align:${h?'right':'left'}">${h}</span>`).join('')}
-    </div>
+  <!-- 2열 데이터 그리드 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">
+    ${cell2('VIX',`<span style="color:${rm.vix_grade_color||'#64748b'}">${(rm.vix||0).toFixed(1)} ${rm.vix_grade||'—'}</span>`)}
+    ${cell2('SPY',chgFmt(rm.spy_chg||0))}
+    ${cell2('US10Y',(rm.tnx_value||0).toFixed(2)+'%'+tnxWarn)}
+    ${cell2('QQQ',chgFmt(rm.qqq_chg||0))}
+    ${cell2('F&G',`${Math.round(rm.fng_score||50)}${miniBars(rm.fng_score||50)}`)}
+    ${cell2('Slope',chgFmt(rm.market_slope||0))}
+    ${cell2('Risk',`${(rm.composite||1).toFixed(2)}/3.0`)}
+    ${rm.put_call_score!=null?cell2('P/C',`${rm.put_call_score}${miniBars(rm.put_call_score)}`):cell2('E1:E2',`<span style="color:#22c55e">${e1}%</span>/<span style="color:#f59e0b">${e2}%</span>`)}
   </div>`;
 }
 
