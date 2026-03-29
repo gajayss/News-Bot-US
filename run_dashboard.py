@@ -176,26 +176,22 @@ def _read_json_items(name: str) -> list[dict]:
 
 
 def _read_signals_store() -> list[dict]:
-    """선분이력 signals_store.json 읽기.
-    signals_store.json 없거나 비어있으면 daily 파일(stock/option_signals)에서 폴백.
+    """signals_store.json 단일 소스에서 시그널 읽기.
+
+    run_news_radar 기동 시 backfill_from_daily()로 daily 파일이 항상 이미 마이그레이션됨.
+    따라서 fallback 없이 signals_store만 사용 — 단일 진실(Single Source of Truth).
     """
     path = INTERFACE_DIR / "signals_store.json"
-    if path.exists():
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            items = list(payload.get("items", []))
-            if items:
-                return items
-        except Exception:
-            pass
-
-    # Fallback: daily 파일에서 읽어 합치기 (signals_store 미생성 시)
-    stock = _read_json_items("stock_signals")
-    option = _read_json_items("option_signals")
-    combined = stock + option
-    # created_at 기준 최신순 정렬
-    combined.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-    return combined
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        items = list(payload.get("items", []))
+        # created_at 기준 최신순 정렬
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return items
+    except Exception:
+        return []
 
 
 DASHBOARD_HTML = r"""<!DOCTYPE html>

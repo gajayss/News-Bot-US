@@ -167,6 +167,47 @@ class DailyJsonBus:
         payload = json.loads(path.read_text(encoding="utf-8"))
         return list(payload.get("items", []))
 
+    def backfill_from_daily(self) -> int:
+        """기동 시 daily 파일(stock/option_signals) → signals_store 마이그레이션.
+
+        signals_store에 없는 시그널만 insert (upsert 중복 제거).
+        재기동 후에도 즉시 이력 표시 가능하도록 보장.
+
+        Returns:
+            삽입된 신규 건수.
+        """
+        inserted = 0
+        for fname in ("stock_signals", "option_signals"):
+            path = self._active_path(fname)
+            if not path.exists():
+                continue
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                for item in payload.get("items", []):
+                    # signal_id 기반 정확한 중복 체크 (upsert는 symbol/side/class 기준이라
+                    # 같은 symbol이라도 다른 이벤트면 신규 insert 해야 함)
+                    if self._upsert_by_signal_id(item) == "inserted":
+                        inserted += 1
+            except Exception:
+                continue
+        return inserted
+
+    def _upsert_by_signal_id(self, item: dict[str, Any]) -> str:
+        """signal_id 기준 중복 없이 insert. signals_store 전용 내부 메서드."""
+        self._ensure_signals_store()
+        path = self.interface_dir / f"{self._SIGNALS_FILE}.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        items: list[dict[str, Any]] = payload.setdefault("items", [])
+
+        sig_id = item.get("signal_id", "")
+        if sig_id:
+            if any(e.get("signal_id") == sig_id for e in items):
+                return "exists"  # 이미 있음 — 스킵
+
+        items.append(item)
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return "inserted"
+
     def set_consumer_offset(self, consumer_name: str, offset: int) -> None:
         path = self._active_path("consumer_state")
         state = self.get_consumer_state()

@@ -99,6 +99,11 @@ def main() -> None:
         dedup_guard=dedup_guard,
         use_market_context=True,
     )
+    # 기동 시 daily 파일 → signals_store 즉시 backfill
+    # 재기동 후에도 기존 이력이 즉시 대시보드에 표시됨
+    n_backfill = bus.backfill_from_daily()
+    logger.info("Startup backfill: %d signals → signals_store", n_backfill)
+
     seen = _load_seen_ids(bus)
     last_calendar_refresh = time.time()
     last_insider_scan = 0.0      # 첫 루프에서 즉시 스캔
