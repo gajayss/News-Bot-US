@@ -176,15 +176,26 @@ def _read_json_items(name: str) -> list[dict]:
 
 
 def _read_signals_store() -> list[dict]:
-    """선분이력 signals_store.json 읽기 (날짜 초기화 없는 영구 파일)."""
+    """선분이력 signals_store.json 읽기.
+    signals_store.json 없거나 비어있으면 daily 파일(stock/option_signals)에서 폴백.
+    """
     path = INTERFACE_DIR / "signals_store.json"
-    if not path.exists():
-        return []
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        return list(payload.get("items", []))
-    except Exception:
-        return []
+    if path.exists():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            items = list(payload.get("items", []))
+            if items:
+                return items
+        except Exception:
+            pass
+
+    # Fallback: daily 파일에서 읽어 합치기 (signals_store 미생성 시)
+    stock = _read_json_items("stock_signals")
+    option = _read_json_items("option_signals")
+    combined = stock + option
+    # created_at 기준 최신순 정렬
+    combined.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return combined
 
 
 DASHBOARD_HTML = r"""<!DOCTYPE html>
