@@ -493,15 +493,15 @@ th{position:relative}
 </div>
 <div class="desc"><b>GOVERN</b>(정부/전쟁) > <b>FEDWALL</b>(연준/월가) > <b>ECONOMY</b>(경제지표) > <b>CORPORATE</b>(기업/내부자/헤지펀드) > <b>THEME</b>(테마/신기술) 순 우선순위</div>
 <div style="display:flex;align-items:stretch;gap:0;flex-wrap:wrap">
+  <!-- Regime 게이지 위젯 — 맨 왼쪽 -->
+  <div class="rgm-wrap" id="regime-widget" style="border-left:none;border-right:1px solid var(--bdr)">
+    <div style="font-size:11px;color:var(--td)">시장 국면 로딩중…</div>
+  </div>
   <div style="flex:1;min-width:180px;padding:10px 16px">
     <div class="axr" id="ab"></div>
   </div>
   <div style="flex:1;min-width:180px;padding:10px 16px;border-left:1px solid var(--bdr)">
     <div class="stats" id="stb"></div>
-  </div>
-  <!-- Regime 게이지 위젯 -->
-  <div class="rgm-wrap" id="regime-widget">
-    <div style="font-size:11px;color:var(--td)">시장 국면 로딩중…</div>
   </div>
 </div>
 <div class="src" id="srcb"></div>
