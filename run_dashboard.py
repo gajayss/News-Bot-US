@@ -76,14 +76,16 @@ def _build_incremental_trail(scores: list[float]) -> list[dict]:
         sub = scores[:i]
         n = len(sub)
 
-        # X: 가중 이동평균 (최근 뉴스에 가중치)
+        # X: 가중 이동평균 (최근 뉴스에 가중치) — 클램핑
         weights = [(j + 1) for j in range(n)]
         wsum = sum(s * w for s, w in zip(sub, weights))
         x = 100 + (wsum / sum(weights)) * _RRG_SCALE
+        x = max(90, min(110, x))  # 90~110 범위 제한
 
-        # Y: X의 변화율 (모멘텀)
+        # Y: X의 변화율 (모멘텀) — 클램핑으로 극단치 방지
         dx = x - prev_x
         y = 100 + dx * _RRG_MOM_SCALE
+        y = max(90, min(110, y))  # 90~110 범위 제한 (IBEX 동일 수준)
         prev_x = x
 
         raw_xs.append(x)
@@ -436,37 +438,27 @@ function buildNewsRRG(elId, trails) {
   const quadColors = { leading: '#4ade80', improving: '#facc15', weakening: '#3b82f6', lagging: '#ef4444' };
   const RECENT_N = 10;
 
-  // 비선형 stretch — 100 중심 편차 확대
-  const POWER = 0.58, SCALE = 3.8;
-  const stretchVal = (v, c = 100) => {
-    const dev = v - c;
-    if (Math.abs(dev) < 1e-6) return c;
-    return c + (dev > 0 ? 1 : -1) * Math.pow(Math.abs(dev), POWER) * SCALE;
-  };
-  const sxf = v => stretchVal(v);
-  const syf = v => stretchVal(v);
+  // 선형 매핑 — 뉴스 데이터는 90~110 범위이므로 stretch 불필요
+  const sxf = v => v;
+  const syf = v => v;
 
-  // 범위 계산
+  // 범위 계산 — 고정 범위 (85~115) + 데이터 확장
+  // 충분한 여백으로 점이 모서리에 붙지 않게
   const allX = [], allY = [];
   (trails || []).forEach(({trail}) => {
     (trail || []).forEach(pt => { allX.push(pt.x); allY.push(pt.y); });
   });
-  if (!allX.length) {
-    // 데이터 없으면 빈 4분면만 표시
-    allX.push(94, 106); allY.push(94, 106);
-  }
 
-  const xMin = Math.min(...allX), xMax = Math.max(...allX);
-  const yMin = Math.min(...allY), yMax = Math.max(...allY);
-  const xSpan = Math.max(xMax - xMin, 6);
-  const ySpan = Math.max(yMax - yMin, 4);
-  const xlo_r = Math.min(xMin - xSpan * 0.25, 94);
-  const xhi_r = Math.max(xMax + xSpan * 0.25, 106);
-  const ylo_r = Math.min(yMin - ySpan * 0.30, 94);
-  const yhi_r = Math.max(yMax + ySpan * 0.30, 106);
+  const xMin = allX.length ? Math.min(...allX) : 95;
+  const xMax = allX.length ? Math.max(...allX) : 105;
+  const yMin = allY.length ? Math.min(...allY) : 95;
+  const yMax = allY.length ? Math.max(...allY) : 105;
 
-  const xlo = sxf(xlo_r), xhi = sxf(xhi_r);
-  const ylo = syf(ylo_r), yhi = syf(yhi_r);
+  // 최소 85~115 보장, 데이터가 넘으면 확장
+  const xlo = Math.min(85, xMin - 3);
+  const xhi = Math.max(115, xMax + 3);
+  const ylo = Math.min(85, yMin - 3);
+  const yhi = Math.max(115, yMax + 3);
 
   // 분면별 TOP2 — 변화 속도(speed) 기준 선별
   const quadGroups = { leading: [], improving: [], weakening: [], lagging: [] };
@@ -494,16 +486,16 @@ function buildNewsRRG(elId, trails) {
   const leadingTop2Set = new Set();
   (quadGroups['leading'] || []).slice(0, 2).forEach(g => leadingTop2Set.add(g.ticker));
 
-  // 비-TOP5 종목은 완전 숨김 (뉴스 있어도 TOP5 밖이면 안 보임)
-  const visibleTickers = new Set([...topSet]);
-  if (topTicker) visibleTickers.add(topTicker);
-
   // RS Score 1위 (전체 기준: 뉴스 건수 + 속도 종합)
   const _ranked = (trails || [])
     .filter(t => t.trail && t.trail.length)
     .map(t => ({ ticker: t.ticker, cnt: t.trail[t.trail.length - 1].news_count || 0 }))
     .sort((a, b) => b.cnt - a.cnt);
   const topTicker = _ranked.length ? _ranked[0].ticker : null;
+
+  // 비-TOP5 종목은 완전 숨김 (뉴스 있어도 TOP5 밖이면 안 보임)
+  const visibleTickers = new Set([...topSet]);
+  if (topTicker) visibleTickers.add(topTicker);
 
   // 렌더 순서 — TOP5만 표시 (나머지 숨김)
   const orderedTrails = [
@@ -639,12 +631,12 @@ function buildNewsRRG(elId, trails) {
       gridcolor: 'transparent', zerolinecolor: 'transparent',
     },
     shapes: [
-      { type:'rect', x0:C, x1:xhi, y0:C, y1:yhi, xref:'x', yref:'y', layer:'below', fillcolor:'rgba(74,222,128,0.07)',  line:{width:0} },
-      { type:'rect', x0:xlo, x1:C,  y0:C, y1:yhi, xref:'x', yref:'y', layer:'below', fillcolor:'rgba(250,204,21,0.07)', line:{width:0} },
-      { type:'rect', x0:C, x1:xhi, y0:ylo, y1:C,  xref:'x', yref:'y', layer:'below', fillcolor:'rgba(59,130,246,0.07)', line:{width:0} },
-      { type:'rect', x0:xlo, x1:C,  y0:ylo, y1:C,  xref:'x', yref:'y', layer:'below', fillcolor:'rgba(239,68,68,0.07)',  line:{width:0} },
-      { type:'line', x0:C, x1:C, y0:ylo, y1:yhi, xref:'x', yref:'y', line:{color:'#2d3748', width:1, dash:'dot'} },
-      { type:'line', x0:xlo, x1:xhi, y0:C, y1:C, xref:'x', yref:'y', line:{color:'#2d3748', width:1, dash:'dot'} },
+      { type:'rect', x0:C, x1:xhi, y0:C, y1:yhi, xref:'x', yref:'y', layer:'below', fillcolor:'rgba(74,222,128,0.18)',  line:{width:0} },
+      { type:'rect', x0:xlo, x1:C,  y0:C, y1:yhi, xref:'x', yref:'y', layer:'below', fillcolor:'rgba(250,204,21,0.12)', line:{width:0} },
+      { type:'rect', x0:C, x1:xhi, y0:ylo, y1:C,  xref:'x', yref:'y', layer:'below', fillcolor:'rgba(59,130,246,0.12)', line:{width:0} },
+      { type:'rect', x0:xlo, x1:C,  y0:ylo, y1:C,  xref:'x', yref:'y', layer:'below', fillcolor:'rgba(239,68,68,0.18)',  line:{width:0} },
+      { type:'line', x0:C, x1:C, y0:ylo, y1:yhi, xref:'x', yref:'y', line:{color:'#4a5568', width:1.5, dash:'dot'} },
+      { type:'line', x0:xlo, x1:xhi, y0:C, y1:C, xref:'x', yref:'y', line:{color:'#4a5568', width:1.5, dash:'dot'} },
     ],
     annotations: [
       { x:xhi, y:yhi, xref:'x', yref:'y', text:'LEADING 강세가속',   showarrow:false, font:{size:11,color:'#4ade80'}, xanchor:'right', yanchor:'top' },
