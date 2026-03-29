@@ -525,47 +525,51 @@ th{position:relative}
 <body>
 <div class="wrap">
 
-<!-- Row 0: [공포&탐욕+REGIME 좌] + [5축 뉴스분류 중앙(compact)] + [경제캘린더 우(flex:1)] -->
-<div class="fw" style="display:flex;gap:10px;align-items:stretch">
+<!-- Row 0: 3열 레이아웃
+     Col1(230px): [공포&탐욕] 위 / [MARKET REGIME] 아래
+     Col2(420px): [5축 뉴스 분류] 전체 높이
+     Col3(flex:1): [경제 캘린더]  전체 높이
+-->
+<div class="fw" style="display:flex;gap:10px;align-items:stretch;min-height:300px">
 
-  <!-- 좌측: 공포&탐욕 + MARKET REGIME (세로 스택, 240px 고정) -->
-  <div style="display:flex;flex-direction:column;gap:10px;width:240px;flex-shrink:0">
-    <div class="pnl" style="flex:1">
-    <div class="ph" style="padding:7px 14px">
-      <span style="font-size:12px;color:var(--td)">● 공포 &amp; 탐욕 지수</span>
-      <small>DAILY</small>
+  <!-- ① 좌측 열: 공포&탐욕(위) + MARKET REGIME(아래) — 230px 고정 -->
+  <div style="display:flex;flex-direction:column;gap:10px;width:230px;flex-shrink:0">
+    <div class="pnl" style="flex:1;min-height:0">
+      <div class="ph" style="padding:7px 14px">
+        <span style="font-size:12px;color:var(--td)">● 공포 &amp; 탐욕 지수</span>
+        <small>DAILY</small>
+      </div>
+      <div id="fng-body" style="padding:8px 14px 10px">로딩중…</div>
     </div>
-    <div id="fng-body" style="padding:8px 14px 10px">로딩중…</div>
-    </div>
-    <div class="pnl" style="flex:1">
-    <div class="ph" style="padding:7px 14px">
-      <span style="font-size:12px;color:#ef4444">● MARKET REGIME</span>
-      <small id="regime-ts">—</small>
-    </div>
-    <div id="regime-body" style="padding:8px 14px 10px">로딩중…</div>
+    <div class="pnl" style="flex:1;min-height:0">
+      <div class="ph" style="padding:7px 14px">
+        <span style="font-size:12px;color:#ef4444">● MARKET REGIME</span>
+        <small id="regime-ts">—</small>
+      </div>
+      <div id="regime-body" style="padding:8px 14px 10px">로딩중…</div>
     </div>
   </div>
 
-  <!-- 중앙: 5축 뉴스 분류 (내용에 맞게 자동 너비, 최소 360px) -->
-  <div class="pnl" style="flex:0 1 auto;min-width:360px">
-  <div class="ph">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <b>5축 뉴스 분류</b><small id="te"></small>
-      <span style="font-size:11px;color:var(--td)"><span class="dot"></span> {{ source_mode }} · {{ watchlist_count }}종목</span>
-      <span id="rt" style="font-size:11px;color:var(--td)"></span>
+  <!-- ② 중앙 열: 5축 뉴스 분류 — 420px 고정, 전체 높이 -->
+  <div class="pnl" style="width:420px;flex-shrink:0">
+    <div class="ph">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b>5축 뉴스 분류</b><small id="te"></small>
+        <span style="font-size:11px;color:var(--td)"><span class="dot"></span> {{ source_mode }} · {{ watchlist_count }}종목</span>
+        <span id="rt" style="font-size:11px;color:var(--td)"></span>
+      </div>
     </div>
-  </div>
-  <div class="desc" style="font-size:11px"><b>GOVERN</b> &gt; <b>FEDWALL</b> &gt; <b>ECONOMY</b> &gt; <b>CORPORATE</b> &gt; <b>THEME</b> 순 우선순위</div>
-  <div class="axr" id="ab"></div>
-  <div class="stats" id="stb" style="grid-template-columns:repeat(4,1fr);padding:8px 14px"></div>
-  <div class="src" id="srcb"></div>
+    <div class="desc" style="font-size:11px"><b>GOVERN</b> &gt; <b>FEDWALL</b> &gt; <b>ECONOMY</b> &gt; <b>CORPORATE</b> &gt; <b>THEME</b></div>
+    <div class="axr" id="ab"></div>
+    <div class="stats" id="stb"></div>
+    <div class="src" id="srcb"></div>
   </div>
 
-  <!-- 우측: 경제 캘린더 (남은 공간 모두 차지) -->
-  <div class="pnl" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
-  <div class="ph"><b>경제 캘린더</b><small id="cc"></small></div>
-  <div class="cal-fbar" id="cal-fbar"></div>
-  <div class="pb" id="cb" style="flex:1;overflow-y:auto"></div>
+  <!-- ③ 우측 열: 경제 캘린더 — 나머지 공간 전부, 전체 높이 -->
+  <div class="pnl" style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div class="ph"><b>경제 캘린더</b><small id="cc"></small></div>
+    <div class="cal-fbar" id="cal-fbar"></div>
+    <div id="cb" style="flex:1;overflow-y:auto;max-height:none"></div>
   </div>
 
 </div>
