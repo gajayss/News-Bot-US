@@ -556,7 +556,7 @@ th{position:relative}
   </div>
 
   <!-- ③ 5축 뉴스 분류 — 420px 고정 -->
-  <div class="pnl" style="width:420px;flex-shrink:0">
+  <div class="pnl" id="axis-panel" style="width:420px;flex-shrink:0">
     <div class="ph">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <b>5축 뉴스 분류</b><small id="te"></small>
@@ -569,11 +569,11 @@ th{position:relative}
     <div class="stats" id="stb"></div>
   </div>
 
-  <!-- ③ 우측 열: 경제 캘린더 — 나머지 공간 전부, 전체 높이 -->
-  <div class="pnl" style="flex:1;min-width:0;display:flex;flex-direction:column">
-    <div class="ph"><b>경제 캘린더</b><small id="cc"></small></div>
+  <!-- ④ 경제 캘린더 — 나머지 공간, 5축 박스 높이에 맞춰 내부 스크롤 -->
+  <div class="pnl" id="cal-panel" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+    <div class="ph" id="cal-ph"><b>경제 캘린더</b><small id="cc"></small></div>
     <div class="cal-fbar" id="cal-fbar"></div>
-    <div id="cb" style="flex:1;overflow-y:auto;max-height:none"></div>
+    <div id="cb" style="overflow-y:auto;flex:1;min-height:0"></div>
   </div>
 
 </div>
@@ -903,6 +903,17 @@ const OPEN_SENTINEL='9999-12-31T23:59:59';
 let sigFilter='active';   // active | today | 3day | all
 let assetFilter='all';    // all | STOCK | OPTION
 let sideFilter='all';     // all | BUY_PUT | BUY_CALL | SELL
+
+/* ── 캘린더 높이 = 5축 박스 높이에 동기화 ── */
+function syncCalHeight(){
+  const axisPanel=document.getElementById('axis-panel');
+  const calPanel=document.getElementById('cal-panel');
+  if(!axisPanel||!calPanel) return;
+  const h=axisPanel.offsetHeight;
+  calPanel.style.height=h+'px';
+  calPanel.style.maxHeight=h+'px';
+}
+window.addEventListener('resize',syncCalHeight);
 
 /* ── 좌측 네비 전환 (IBEX_US 스타일) ── */
 const TAB_TITLES={signals:'매매 시그널',news:'뉴스 이벤트',constraint:'진입 제약'};
@@ -1512,6 +1523,8 @@ if(lnavSc) lnavSc.textContent=allSigs.length;
 const cl=d.calendar_events||[];
 document.getElementById('cc').textContent=cl.length+'건';
 renderCalendar(cl);
+// 캘린더 렌더 후 5축 높이에 맞춤
+setTimeout(syncCalHeight, 0);
 
 const con=d.constraint||{};let cx;
 if(con.constrained){const cc2=con.action==='BLOCK'?'#ef4444':con.action==='REDUCE'?'#f97316':'#eab308';
