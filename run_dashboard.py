@@ -56,25 +56,62 @@ def _fetch_regime() -> dict:
     except Exception:
         pass
 
-    # ── CNN Fear & Greed ─────────────────────────────────────────
+    # ── CNN Fear & Greed (이력 포함) ──────────────────────────────
+    fng_prev_close = fng_prev_1w = fng_prev_1m = 50.0
+    put_call_score = None
     try:
-        r = requests.get(_CNN_FNG_URL, headers=_CNN_FNG_HDR, timeout=8)
-        fg = r.json().get("fear_and_greed", {})
-        fng_score  = float(fg.get("score", 50))
-        fng_rating = str(fg.get("rating", "neutral")).lower()
+        r   = requests.get(_CNN_FNG_URL, headers=_CNN_FNG_HDR, timeout=8)
+        raw = r.json()
+        fg  = raw.get("fear_and_greed", {})
+        fng_score      = float(fg.get("score", 50))
+        fng_rating     = str(fg.get("rating", "neutral")).lower()
+        fng_prev_close = float(fg.get("previous_close",   fg.get("score", 50)))
+        fng_prev_1w    = float(fg.get("previous_1_week",  fg.get("score", 50)))
+        fng_prev_1m    = float(fg.get("previous_1_month", fg.get("score", 50)))
+        pc = raw.get("put_call_options", {})
+        if pc.get("score") is not None:
+            put_call_score = round(float(pc["score"]), 1)
     except Exception:
         pass
 
-    # ── QQQ 5일 Slope (Yahoo Finance) ────────────────────────────
+    # ── US10Y (Yahoo Finance ^TNX) ────────────────────────────────
+    tnx_value = tnx_chg = 0.0
+    tnx_warning = False
+    try:
+        r = requests.get(
+            "https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?range=3d&interval=1d",
+            headers={"User-Agent": "Mozilla/5.0"}, timeout=8,
+        )
+        cl = [c for c in r.json()["chart"]["result"][0]["indicators"]["quote"][0]["close"] if c is not None]
+        if cl:
+            tnx_value   = round(cl[-1], 3)
+            tnx_chg     = round(cl[-1] - cl[-2], 3) if len(cl) >= 2 else 0.0
+            tnx_warning = tnx_value >= 4.2
+    except Exception:
+        pass
+
+    # ── QQQ 5일 Slope + SPY/QQQ 1일 등락률 ─────────────────────
+    spy_chg = qqq_chg = 0.0
     try:
         r = requests.get(
             "https://query1.finance.yahoo.com/v8/finance/chart/QQQ?range=10d&interval=1d",
             headers={"User-Agent": "Mozilla/5.0"}, timeout=8,
         )
-        closes = r.json()["chart"]["result"][0]["indicators"]["quote"][0]["close"]
-        closes = [c for c in closes if c is not None]
+        closes = [c for c in r.json()["chart"]["result"][0]["indicators"]["quote"][0]["close"] if c is not None]
         if len(closes) >= 6:
             slope = round((closes[-1] - closes[-6]) / closes[-6] * 100, 2)
+        if len(closes) >= 2:
+            qqq_chg = round((closes[-1] - closes[-2]) / closes[-2] * 100, 2)
+    except Exception:
+        pass
+    try:
+        r = requests.get(
+            "https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=3d&interval=1d",
+            headers={"User-Agent": "Mozilla/5.0"}, timeout=8,
+        )
+        cl = [c for c in r.json()["chart"]["result"][0]["indicators"]["quote"][0]["close"] if c is not None]
+        if len(cl) >= 2:
+            spy_chg = round((cl[-1] - cl[-2]) / cl[-2] * 100, 2)
     except Exception:
         pass
 
@@ -106,6 +143,12 @@ def _fetch_regime() -> dict:
             "regime": regime, "direction": direction,
             "vix": round(vix, 2), "vix_grade": vg, "vix_grade_color": vc,
             "fng_score": round(fng_score, 1), "fng_rating": fng_rating,
+            "fng_prev_close": round(fng_prev_close, 1),
+            "fng_prev_1w":    round(fng_prev_1w,    1),
+            "fng_prev_1m":    round(fng_prev_1m,    1),
+            "put_call_score": put_call_score,
+            "tnx_value":    tnx_value,  "tnx_chg":  tnx_chg,  "tnx_warning": tnx_warning,
+            "spy_chg":      spy_chg,    "qqq_chg":  qqq_chg,
             "market_slope": slope, "composite": composite,
             "last_updated": datetime.now(timezone.utc).strftime("%H:%M"),
             "stale": vix <= 0,
@@ -318,7 +361,7 @@ body{background:var(--bg);color:var(--t);font:17px/1.5 'Segoe UI',system-ui,sans
 /* VIX 반원 게이지 */
 .vix-svg{display:block;margin:0 auto}
 
-.wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 14px;margin:0}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px;margin:0}
 .fw{grid-column:1/-1}
 .pnl{background:var(--panel);border-radius:6px;border:1px solid var(--bdr);overflow:hidden}
 .ph{padding:10px 16px;background:var(--hdr);border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center}
@@ -397,7 +440,7 @@ th{position:relative}
 .stat .sl{font-size:11px;color:var(--td);margin-top:2px}
 
 /* RRG */
-.rrg-wrap{position:relative;width:100%;height:500px;overflow:hidden}
+.rrg-wrap{position:relative;width:100%;height:540px;overflow:hidden}
 #rrg-plot{width:100%;height:100%}
 
 /* Signal filter buttons */
@@ -492,19 +535,28 @@ th{position:relative}
   </div>
 </div>
 <div class="desc"><b>GOVERN</b>(정부/전쟁) > <b>FEDWALL</b>(연준/월가) > <b>ECONOMY</b>(경제지표) > <b>CORPORATE</b>(기업/내부자/헤지펀드) > <b>THEME</b>(테마/신기술) 순 우선순위</div>
-<div style="display:flex;align-items:stretch;gap:0;flex-wrap:wrap">
-  <!-- Regime 게이지 위젯 — 맨 왼쪽 -->
-  <div class="rgm-wrap" id="regime-widget" style="border-left:none;border-right:1px solid var(--bdr)">
-    <div style="font-size:11px;color:var(--td)">시장 국면 로딩중…</div>
-  </div>
-  <div style="flex:1;min-width:180px;padding:10px 16px">
-    <div class="axr" id="ab"></div>
-  </div>
-  <div style="flex:1;min-width:180px;padding:10px 16px;border-left:1px solid var(--bdr)">
-    <div class="stats" id="stb"></div>
-  </div>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px">
+  <div class="axr" id="ab" style="flex:1;min-width:180px"></div>
+  <div class="stats" id="stb" style="flex:1;min-width:180px"></div>
 </div>
 <div class="src" id="srcb"></div>
+</div>
+
+<!-- Row 1: 공포&탐욕 게이지 + MARKET REGIME (IBEX_US 이식) -->
+<div class="pnl">
+<div class="ph" style="padding:7px 14px">
+  <span style="font-size:12px;color:var(--td)">● 공포 &amp; 탐욕 지수</span>
+  <small>DAILY</small>
+</div>
+<div id="fng-body" style="padding:8px 14px 10px">로딩중…</div>
+</div>
+
+<div class="pnl">
+<div class="ph" style="padding:7px 14px">
+  <span style="font-size:12px;color:#ef4444">● MARKET REGIME</span>
+  <small id="regime-ts">—</small>
+</div>
+<div id="regime-body" style="padding:8px 14px 10px">로딩중…</div>
 </div>
 
 <!-- Row 1 Left: 매매 시그널 -->
@@ -882,106 +934,182 @@ function buildRocMap(allSigs){
 
 
 /* ================================================================
- * renderRegime — 시장 국면 게이지 위젯
- * IBEX_US RegimePanel 로직을 순수 SVG+HTML로 이식
+ * IBEX_US 이식 — 공포&탐욕 게이지 + MARKET REGIME 패널
  * ================================================================ */
 const REGIME_CFG={
-  BULL:       {color:'#22c55e',bg:'#14532d',label:'BULL',       dir:'▲ LONG',  blink:false},
-  NORMAL:     {color:'#3b82f6',bg:'#1e3a5f',label:'NORMAL',     dir:'▲ LONG',  blink:false},
-  CAUTION:    {color:'#f59e0b',bg:'#713f12',label:'CAUTION',    dir:'↕ MIXED', blink:false},
-  BEAR_WATCH: {color:'#f97316',bg:'#431407',label:'BEAR_WATCH', dir:'▼ SHORT', blink:true},
-  BEAR:       {color:'#ef4444',bg:'#450a0a',label:'BEAR',       dir:'▼ SHORT', blink:true},
+  BULL:       {color:'#22c55e',bg:'#14532d',label:'BULL'},
+  NORMAL:     {color:'#3b82f6',bg:'#1e3a5f',label:'NORMAL'},
+  CAUTION:    {color:'#f59e0b',bg:'#713f12',label:'CAUTION'},
+  BEAR_WATCH: {color:'#f97316',bg:'#431407',label:'BEAR_WATCH'},
+  BEAR:       {color:'#ef4444',bg:'#450a0a',label:'BEAR'},
+};
+const DIR_CFG={
+  LONG: {color:'#22c55e',icon:'▲',label:'LONG'},
+  MIXED:{color:'#f59e0b',icon:'↕',label:'MIXED'},
+  SHORT:{color:'#ef4444',icon:'▼',label:'SHORT'},
 };
 
-function vixGaugeSvg(vix){
-  // 반원 게이지 — VIX 0~50 → 0~180도
-  const W=170,H=95,cx=85,cy=80,R=62,rW=10;
+/* F&G 반원 스피드계 게이지 SVG (0~100) */
+function fngGaugeSvg(score){
+  const W=220,H=128,cx=110,cy=115,R=92,rW=15;
+  const cl=Math.max(0,Math.min(100,score||0));
+  // 0→왼쪽(-π), 100→오른쪽(0)
+  function s2a(s){return(s/100)*Math.PI-Math.PI;}
+  function arcP(s1,s2){
+    const a1=s2a(s1),a2=s2a(s2);
+    const x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);
+    const x2=cx+R*Math.cos(a2),y2=cy+R*Math.sin(a2);
+    return `M${x1},${y1} A${R},${R} 0 0,1 ${x2},${y2}`;
+  }
+  const na=s2a(cl);
+  const nx=cx+(R-10)*Math.cos(na), ny=cy+(R-10)*Math.sin(na);
+  const nc=cl<25?'#ef4444':cl<45?'#f97316':cl<55?'#94a3b8':cl<75?'#22c55e':'#10b981';
+  const lbl=cl<25?'극도공포':cl<45?'공포':cl<55?'중립':cl<75?'탐욕':'극도탐욕';
   const segs=[
-    {lo:0, hi:15, c:'#22c55e'},  // SAFE
-    {lo:15,hi:20, c:'#86efac'},  // CALM
-    {lo:20,hi:25, c:'#f59e0b'},  // CAUTION
-    {lo:25,hi:30, c:'#f97316'},  // WARN
-    {lo:30,hi:50, c:'#ef4444'},  // DANGER/FEAR
+    [0,25,'#ef4444'],[25,45,'#f97316'],[45,55,'#94a3b8'],[55,75,'#22c55e'],[75,100,'#10b981']
   ];
-  function polarXY(deg,r){
-    const rad=(deg-180)*Math.PI/180;
-    return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)];
-  }
-  function arcPath(lo,hi){
-    const a0=(lo/50)*180, a1=(hi/50)*180;
-    const [x0,y0]=polarXY(a0,R), [x1,y1]=polarXY(a1,R);
-    const lf=a1-a0>90?1:0;
-    return `M${x0},${y0} A${R},${R} 0 ${lf},1 ${x1},${y1}`;
-  }
-  const clamped=Math.max(0,Math.min(50,vix||0));
-  const needleAng=(clamped/50)*180;
-  const [nx,ny]=polarXY(needleAng,R-4);
-  // 현재 VIX 색상
-  let nColor='#64748b';
-  if(clamped<15)nColor='#22c55e';
-  else if(clamped<18)nColor='#86efac';
-  else if(clamped<21)nColor='#f59e0b';
-  else if(clamped<25)nColor='#f97316';
-  else if(clamped<30)nColor='#ef4444';
-  else nColor='#dc2626';
-
-  const segPaths=segs.map(s=>`<path d="${arcPath(s.lo,s.hi)}" stroke="${s.c}" stroke-width="${rW}" fill="none"/>`).join('');
-  return `<svg class="vix-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <path d="${arcPath(0,50)}" stroke="#1e2736" stroke-width="${rW+2}" fill="none"/>
-  ${segPaths}
-  <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nColor}" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="${cx}" cy="${cy}" r="4" fill="${nColor}"/>
-  <text x="${cx}" y="${cy-12}" text-anchor="middle" fill="${nColor}" font-size="18" font-weight="700">${vix>0?vix.toFixed(1):'—'}</text>
-  <text x="${cx}" y="${cy+5}" text-anchor="middle" fill="#475569" font-size="10">VIX</text>
-  <text x="8"  y="${cy+14}" fill="#475569" font-size="9">0</text>
-  <text x="${W-14}" y="${cy+14}" fill="#475569" font-size="9">50</text>
+  const segH=segs.map(([s1,s2,c])=>`<path d="${arcP(s1,s2)}" stroke="${c}" stroke-width="${rW}" fill="none" opacity="0.85"/>`).join('');
+  // 눈금 라벨
+  const ticks=[{v:0,t:'극공'},{v:25,t:'공포'},{v:50,t:'중립'},{v:75,t:'탐욕'},{v:100,t:'극탐'}];
+  const tickH=ticks.map(({v,t})=>{
+    const a=s2a(v); const r2=R+16;
+    return `<text x="${cx+r2*Math.cos(a)}" y="${cy+r2*Math.sin(a)+3}" text-anchor="middle" fill="#334155" font-size="9">${t}</text>`;
+  }).join('');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;margin:0 auto">
+  <path d="${arcP(0,100)}" stroke="#1a2030" stroke-width="${rW+3}" fill="none"/>
+  ${segH}
+  ${tickH}
+  <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nc}" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="${cx}" cy="${cy}" r="7" fill="${nc}" opacity="0.9"/>
+  <text x="${cx}" y="${cy-22}" text-anchor="middle" fill="${nc}" font-size="30" font-weight="800" font-family="monospace">${cl>0?Math.round(cl):'—'}</text>
+  <text x="${cx}" y="${cy-6}" text-anchor="middle" fill="${nc}" font-size="12" font-weight="600">${lbl}</text>
 </svg>`;
 }
 
-function fngColor(s){
-  return s<25?'#ef4444':s<45?'#f97316':s<55?'#94a3b8':s<75?'#22c55e':'#10b981';
-}
-function fngLabel(r){
-  const m={'extreme fear':'극도공포','fear':'공포','neutral':'중립','greed':'탐욕','extreme greed':'극도탐욕'};
-  return m[r]||r;
+function fngHistCell(score,label){
+  const c=score<25?'#ef4444':score<45?'#f97316':score<55?'#94a3b8':score<75?'#22c55e':'#10b981';
+  const t=score<25?'극도공포':score<45?'공포':score<55?'중립':score<75?'탐욕':'극도탐욕';
+  return `<div style="text-align:center;flex:1">
+    <div style="font:700 18px/1 monospace;color:${c}">${Math.round(score)}</div>
+    <div style="font-size:9px;color:${c};margin-top:2px">${t}</div>
+    <div style="font-size:10px;color:#475569;margin-top:1px">${label}</div>
+  </div>`;
 }
 
-function renderRegime(rm){
-  const cfg=REGIME_CFG[rm.regime]||REGIME_CFG.NORMAL;
-  const blinkCls=cfg.blink?'blink':'';
-  const fc=fngColor(rm.fng_score||50);
+/* 미니 막대 (F&G/P-C 소형 표시) */
+function miniBars(score){
+  const c=score<25?'#ef4444':score<45?'#f97316':score<55?'#94a3b8':score<75?'#22c55e':'#10b981';
+  return `<div style="display:inline-flex;gap:2px;vertical-align:middle;margin-left:6px">${
+    [20,40,60,80,100].map(t=>`<div style="width:4px;height:10px;border-radius:1px;background:${score>=t?c:'#1e2736'}"></div>`).join('')
+  }</div>`;
+}
+
+/* chg 포맷 */
+function chgFmt(v){
+  const c=v>0?'#22c55e':v<0?'#ef4444':'#94a3b8';
+  const s=(v>0?'+':'')+v.toFixed(2)+'%';
+  return `<span style="color:${c};font-weight:700">${s}</span>`;
+}
+
+/* ---- 공포&탐욕 패널 렌더 ---- */
+function renderFngPanel(rm){
+  const s=rm.fng_score||50, pc=rm.fng_prev_close||50, pw=rm.fng_prev_1w||50, pm=rm.fng_prev_1m||50;
+  document.getElementById('fng-body').innerHTML=`
+  ${fngGaugeSvg(s)}
+  <div style="display:flex;gap:0;margin-top:8px;border-top:1px solid #1e2736;padding-top:8px">
+    ${fngHistCell(s,'현재')}
+    <div style="width:1px;background:#1e2736"></div>
+    ${fngHistCell(pc,'D-1')}
+    <div style="width:1px;background:#1e2736"></div>
+    ${fngHistCell(pw,'-1W')}
+    <div style="width:1px;background:#1e2736"></div>
+    ${fngHistCell(pm,'-1M')}
+  </div>`;
+}
+
+/* ---- MARKET REGIME 패널 렌더 ---- */
+function renderRegimePanel(rm){
+  const rc=REGIME_CFG[rm.regime]||REGIME_CFG.NORMAL;
+  const dc=DIR_CFG[rm.direction]||DIR_CFG.LONG;
+  const blink=(rm.regime==='BEAR'||rm.regime==='BEAR_WATCH')?'animation:rgm-blink 1s infinite':'';
   const compPct=Math.min((rm.composite||1)/3*100,100);
-  const slopeColor=(rm.market_slope||0)>=0?'#22c55e':'#ef4444';
-  const slopeStr=(rm.market_slope||0)>=0?'+':''+(rm.market_slope||0).toFixed(2)+'%';
+  const e1=Math.round((rm.engine1_ratio||0.5)*100), e2=100-e1;
 
-  document.getElementById('regime-widget').innerHTML=`
-  ${vixGaugeSvg(rm.vix||0)}
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
-    <span class="rgm-badge ${blinkCls}" style="background:${cfg.bg};color:${cfg.color};border-color:${cfg.color}40">
-      ${cfg.label}
-    </span>
-    <span class="rgm-dir" style="color:${cfg.color}">${cfg.dir}</span>
-  </div>
-  <div class="rgm-row" style="margin-top:6px">
-    <span class="rgm-lbl">F&G</span>
-    <div class="rgm-bar-wrap">
-      <div class="rgm-bar" style="width:${rm.fng_score||50}%;background:linear-gradient(to right,#ef4444,#f97316 25%,#94a3b8 50%,#22c55e 75%,#10b981)"></div>
+  // regime 행 목록
+  const rows=[
+    ['BULL','LONG','100%','0%','80%','20%'],
+    ['NORMAL','LONG','70%','0%','60%','40%'],
+    ['CAUTION','MIXED','30%','30%','40%','60%'],
+    ['BEAR_WATCH','SHORT','0%','60%','20%','80%'],
+    ['BEAR','SHORT','0%','100%','0%','100%'],
+  ];
+  const tableRows=rows.map(([k,dir,lo,sh,e1r,e2r])=>{
+    const cfg2=REGIME_CFG[k]; const act=k===rm.regime;
+    const dc2=dir==='LONG'?'#22c55e':dir==='SHORT'?'#ef4444':'#f59e0b';
+    const style=act?`font-weight:700;color:${cfg2.color}`:'color:#2d3d52';
+    return `<div style="display:grid;grid-template-columns:90px 52px 36px 36px 36px 36px;gap:2px;padding:2px 0;border-bottom:1px solid #0c0f14;align-items:center">
+      <span style="font-size:11px;font-family:monospace;${style}${act?';padding:1px 5px;border-radius:3px;background:'+cfg2.bg:''}">${k}</span>
+      <span style="font-size:10px;font-family:monospace;color:${act?dc2:'#2d3d52'}">${dir}</span>
+      <span style="font-size:10px;text-align:right;color:${act?'#22c55e':'#2d3d52'}">${lo}</span>
+      <span style="font-size:10px;text-align:right;color:${act?'#ef4444':'#2d3d52'}">${sh}</span>
+      <span style="font-size:10px;text-align:right;color:${act?'#22c55e':'#2d3d52'}">${e1r}</span>
+      <span style="font-size:10px;text-align:right;color:${act?'#f59e0b':'#2d3d52'}">${e2r}</span>
+    </div>`;
+  }).join('');
+
+  const tnxWarn=rm.tnx_warning?`<span style="color:#f59e0b;font-size:10px"> ≥4.2% ⚠</span>`:'';
+  const tnxChgStr=rm.tnx_chg>0?`<span style="color:#ef4444;font-size:10px"> +${rm.tnx_chg.toFixed(3)}</span>`:
+                  rm.tnx_chg<0?`<span style="color:#22c55e;font-size:10px"> ${rm.tnx_chg.toFixed(3)}</span>`:'';
+
+  const row=(lbl,val,extra='')=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #0d1117">
+      <span style="font-size:11px;color:#475569">${lbl}</span>
+      <span style="font-size:13px;font-weight:700;font-family:monospace;color:var(--tw)">${val}${extra}</span>
+    </div>`;
+
+  document.getElementById('regime-ts').textContent=rm.last_updated||'—';
+  document.getElementById('regime-body').innerHTML=`
+  <div style="display:flex;gap:10px">
+    <!-- 좌: 데이터 행 -->
+    <div style="flex:1;min-width:0">
+      ${row('VIX',`<span style="background:${rm.vix_grade_color||'#64748b'}22;color:${rm.vix_grade_color||'#64748b'};border:1px solid ${rm.vix_grade_color||'#64748b'}44;border-radius:3px;padding:1px 6px;font-size:11px">${rm.vix_grade||'—'}</span> ${(rm.vix||0).toFixed(1)}`)}
+      ${row('US10Y',(rm.tnx_value||0).toFixed(3)+'%',tnxWarn+tnxChgStr)}
+      ${row('F&G',`${Math.round(rm.fng_score||50)}${miniBars(rm.fng_score||50)}`)}
+      ${rm.put_call_score!=null?row('P/C Ratio',`${rm.put_call_score}${miniBars(rm.put_call_score)}`,''):''}
+      ${row('Slope',chgFmt(rm.market_slope||0)+` <span style="font-size:10px;color:#475569">5일</span>`)}
+      ${row('Risk',`${(rm.composite||1).toFixed(2)} <span style="font-size:10px;color:#475569">/ 3.0</span>`)}
+      ${row('SPY',chgFmt(rm.spy_chg||0))}
+      ${row('QQQ',chgFmt(rm.qqq_chg||0))}
+      <!-- E1:E2 바 -->
+      <div style="margin-top:5px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+          <span style="color:#22c55e">E1 ${e1}%</span><span style="color:#f59e0b">E2 ${e2}%</span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:#0c0f14;overflow:hidden;border:1px solid #1e2736">
+          <div style="height:100%;background:linear-gradient(to right,#22c55e ${e1}%,#f59e0b ${e1}%);transition:width .5s"></div>
+        </div>
+      </div>
     </div>
-    <span class="rgm-val" style="color:${fc}">${(rm.fng_score||50).toFixed(0)}<span style="font-size:9px;color:var(--td);margin-left:2px">${fngLabel(rm.fng_rating||'')}</span></span>
-  </div>
-  <div class="rgm-row">
-    <span class="rgm-lbl">Risk</span>
-    <div class="rgm-bar-wrap">
-      <div class="rgm-bar" style="width:${compPct}%;background:linear-gradient(to right,#22c55e,#f59e0b 50%,#ef4444)"></div>
+    <!-- 우: 5단계 국면 인디케이터 -->
+    <div style="display:flex;flex-direction:column;gap:3px;min-width:80px">
+      ${rows.map(([k])=>{
+        const cfg2=REGIME_CFG[k]; const act=k===rm.regime;
+        const blk2=act&&(k==='BEAR'||k==='BEAR_WATCH')?';animation:rgm-blink 1s infinite':'';
+        return `<div style="padding:4px 8px;border-radius:4px;font-size:11px;font-family:monospace;font-weight:${act?700:400};
+          background:${act?cfg2.bg:'#0d1117'};color:${act?cfg2.color:'#2d3d52'};
+          border:1px solid ${act?cfg2.color+'44':'#1a2030'}${blk2}">
+          ${cfg2.label}<br><span style="font-size:9px;color:${act?cfg2.color:'#1e2736'}">E1:${rows.find(r=>r[0]===k)[4]}</span>
+        </div>`;
+      }).join('')}
     </div>
-    <span class="rgm-val" style="color:${cfg.color}">${(rm.composite||1).toFixed(2)}</span>
   </div>
-  <div class="rgm-row">
-    <span class="rgm-lbl">QQQ</span>
-    <div class="rgm-bar-wrap" style="background:transparent">
-      <span style="font-size:11px;font-weight:700;color:${slopeColor}">${slopeStr} <span style="color:var(--td);font-weight:400">5일</span></span>
+  <!-- Regime → Direction 맵 -->
+  <div style="margin-top:8px;border-top:1px solid #1e2736;padding-top:6px">
+    <div style="font-size:10px;color:#334155;margin-bottom:4px;letter-spacing:.05em">REGIME → DIRECTION MAP</div>
+    ${tableRows}
+    <div style="display:grid;grid-template-columns:90px 52px 36px 36px 36px 36px;gap:2px;margin-top:3px">
+      ${['','Dir','Long','Short','E1','E2'].map(h=>`<span style="font-size:8px;color:#1e2736;text-align:${h?'right':'left'}">${h}</span>`).join('')}
     </div>
-    <span class="rgm-val" style="color:var(--td)">${rm.last_updated||'—'}</span>
   </div>`;
 }
 
@@ -1110,47 +1238,38 @@ function buildNewsRRG(elId, trails) {
   const ylo = Math.min(85, yMin - 3);
   const yhi = Math.max(115, yMax + 3);
 
-  // 분면별 TOP2 — 변화 속도(speed) 기준 선별
-  const quadGroups = { leading: [], improving: [], weakening: [], lagging: [] };
-  (trails || []).forEach(({ticker, trail}) => {
-    if (!trail || !trail.length) return;
-    const last = trail[trail.length - 1];
-    const q = (last.quadrant || '').toLowerCase();
-    // 속도 계산 (trail 2개 이상이면)
-    let spd = 0;
-    if (trail.length >= 2) {
-      const lb = Math.min(4, trail.length - 1);
-      const prev = trail[trail.length - 1 - lb];
-      const dx = (last.x - prev.x) / lb;
-      const dy = (last.y - prev.y) / lb;
-      spd = Math.sqrt(dx * dx + dy * dy);
-    }
-    if (quadGroups[q]) quadGroups[q].push({ ticker, x: last.x, cnt: last.news_count || 0, speed: spd });
-  });
-  const topSet = new Set();
-  Object.values(quadGroups).forEach(group => {
-    group.sort((a, b) => b.speed - a.speed || b.cnt - a.cnt);  // 속도 우선, 동률이면 뉴스 건수
-    group.slice(0, 5).forEach(g => topSet.add(g.ticker));  // 분면별 TOP5
-  });
-  // Leading 분면 TOP2 (IBEX 동일 — 폰트/마커 추가 강조)
-  const leadingTop2Set = new Set();
-  (quadGroups['leading'] || []).slice(0, 2).forEach(g => leadingTop2Set.add(g.ticker));
+  // ── TOP 선별 ─────────────────────────────────────────────────
+  // 전체 RS 점수(last.x) 기준 TOP2 → 별(★) 마커, 최대 강조
+  const allRanked = (trails||[])
+    .filter(t=>t.trail&&t.trail.length)
+    .map(t=>{
+      const last=t.trail[t.trail.length-1];
+      let spd=0;
+      if(t.trail.length>=2){
+        const lb=Math.min(4,t.trail.length-1);
+        const prev=t.trail[t.trail.length-1-lb];
+        spd=Math.sqrt(Math.pow(last.x-prev.x,2)+Math.pow(last.y-prev.y,2))/lb;
+      }
+      return {ticker:t.ticker, x:last.x, y:last.y, cnt:last.news_count||0, spd, q:(last.quadrant||'').toLowerCase()};
+    })
+    .sort((a,b)=>(b.x-100)-(a.x-100)||(b.cnt-a.cnt)); // RS-Ratio 내림차순
 
-  // RS Score 1위 (전체 기준: 뉴스 건수 + 속도 종합)
-  const _ranked = (trails || [])
-    .filter(t => t.trail && t.trail.length)
-    .map(t => ({ ticker: t.ticker, cnt: t.trail[t.trail.length - 1].news_count || 0 }))
-    .sort((a, b) => b.cnt - a.cnt);
-  const topTicker = _ranked.length ? _ranked[0].ticker : null;
+  // 전체 TOP2 → 별
+  const top2Set = new Set(allRanked.slice(0,2).map(r=>r.ticker));
 
-  // 비-TOP5 종목은 완전 숨김 (뉴스 있어도 TOP5 밖이면 안 보임)
-  const visibleTickers = new Set([...topSet]);
-  if (topTicker) visibleTickers.add(topTicker);
+  // 분면별 TOP2 → 강조 표시
+  const quadGroups={leading:[],improving:[],weakening:[],lagging:[]};
+  allRanked.forEach(r=>{if(quadGroups[r.q])quadGroups[r.q].push(r);});
+  const quadTopSet = new Set();
+  Object.values(quadGroups).forEach(g=>g.slice(0,2).forEach(r=>quadTopSet.add(r.ticker)));
 
-  // 렌더 순서 — TOP5만 표시 (나머지 숨김)
+  // 표시 범위: top2 + 분면별 top2 + 나머지 뉴스 있는 종목 (최대 20)
+  const visibleTickers = new Set([...top2Set,...quadTopSet,...allRanked.slice(0,20).map(r=>r.ticker)]);
+
+  // 렌더 순서 — top2 마지막(맨 위에 표시)
   const orderedTrails = [
-    ...(trails || []).filter(t => t.trail && t.trail.length && visibleTickers.has(t.ticker) && t.ticker !== topTicker),
-    ...(trails || []).filter(t => t.ticker === topTicker && t.trail && t.trail.length),
+    ...(trails||[]).filter(t=>t.trail&&t.trail.length&&visibleTickers.has(t.ticker)&&!top2Set.has(t.ticker)),
+    ...(trails||[]).filter(t=>top2Set.has(t.ticker)&&t.trail&&t.trail.length),
   ];
 
   const traces = [];
@@ -1160,12 +1279,11 @@ function buildNewsRRG(elId, trails) {
     const last = trail[trail.length - 1];
     const q = (last.quadrant || '').toLowerCase();
     const color = quadColors[q] || '#64748b';
-    const isTop        = ticker === topTicker;
-    const isTop2       = topSet.has(ticker);
-    const isLeadTop2   = leadingTop2Set.has(ticker);
     const nc = last.news_count || 0;
     const hoverTxt = `${ticker}<br>뉴스 ${nc}건<br>감성: ${(last.x - 100).toFixed(1)}<br>모멘텀: ${(last.y - 100).toFixed(1)}`;
 
+    const isTop2      = top2Set.has(ticker);      // 전체 TOP2 → ★ 별
+    const isQuadTop   = quadTopSet.has(ticker);    // 분면 TOP2 → 강조
     const n = trail.length;
     const splitAt = Math.max(0, n - RECENT_N);
     const oldPart = trail.slice(0, splitAt);
@@ -1173,60 +1291,59 @@ function buildNewsRRG(elId, trails) {
     const px = p => sxf(p.x);
     const py = p => syf(p.y);
 
-    // 과거 트레일 — 비TOP2는 거의 안 보이게
+    // 트레일 선 — TOP2는 밝고 굵게
     if (oldPart.length > 1) {
       traces.push({
         x: oldPart.map(px), y: oldPart.map(py),
-        mode: 'lines', type: 'scatter',
-        line: { color, width: 1, dash: 'dot' },
-        opacity: isTop2 ? 0.07 : 0.04,
-        showlegend: false, hoverinfo: 'skip',
+        mode:'lines', type:'scatter',
+        line:{color, width:isTop2?1.5:0.8, dash:'dot'},
+        opacity: isTop2?0.35:isQuadTop?0.20:0.08,
+        showlegend:false, hoverinfo:'skip',
       });
     }
-
-    // 최근 트레일 — DOT + 선
     if (nowPart.length > 0) {
-      const recentLine = [oldPart.length ? oldPart[oldPart.length - 1] : null, ...nowPart].filter(Boolean);
+      const recentLine=[oldPart.length?oldPart[oldPart.length-1]:null,...nowPart].filter(Boolean);
       traces.push({
-        x: recentLine.map(px), y: recentLine.map(py),
-        mode: 'lines', type: 'scatter',
-        line: { color: isTop ? '#fbbf24' : color, width: isTop ? 1.5 : isTop2 ? 1.2 : 0.8, dash: 'dot' },
-        opacity: isTop ? 0.30 : isTop2 ? 0.22 : 0.10,
-        showlegend: false, hoverinfo: 'skip',
+        x:recentLine.map(px), y:recentLine.map(py),
+        mode:'lines', type:'scatter',
+        line:{color:isTop2?'#fbbf24':color, width:isTop2?2.2:isQuadTop?1.5:0.8, dash:'dot'},
+        opacity:isTop2?0.65:isQuadTop?0.45:0.18,
+        showlegend:false, hoverinfo:'skip',
       });
+      // 트레일 점
       traces.push({
-        x: nowPart.map(px), y: nowPart.map(py),
-        mode: 'markers', type: 'scatter',
-        marker: { size: isTop ? 5 : isTop2 ? 4 : 2, color: isTop ? '#fbbf24' : color, opacity: isTop ? 0.60 : isTop2 ? 0.45 : 0.12 },
-        showlegend: false, hoverinfo: 'skip',
+        x:nowPart.map(px), y:nowPart.map(py),
+        mode:'markers', type:'scatter',
+        marker:{size:isTop2?6:isQuadTop?4:2, color:isTop2?'#fbbf24':color, opacity:isTop2?0.75:isQuadTop?0.55:0.20},
+        showlegend:false, hoverinfo:'skip',
       });
     }
 
-    // 현재 위치 마커 — IBEX 동일 스타일 (TOP2만 highlight)
+    // 현재 위치 마커
     traces.push({
-      x: [sxf(last.x)], y: [syf(last.y)],
-      mode: 'markers+text', type: 'scatter',
-      name: ticker,
-      hovertext: [hoverTxt],
-      hovertemplate: '%{hovertext}<extra></extra>',
-      text: [isTop ? `★ ${ticker}` : ticker],
-      textposition: 'top center',
-      textfont: {
-        size:   isTop ? 11 : isLeadTop2 ? 12 : isTop2 ? 10 : 9,
-        color:  isTop ? '#fbbf24' : isLeadTop2 ? '#f1f5f9' : isTop2 ? '#e2e8f0' : '#94a3b8',
-        family: 'Segoe UI',
+      x:[sxf(last.x)], y:[syf(last.y)],
+      mode:'markers+text', type:'scatter',
+      name:ticker,
+      hovertext:[hoverTxt],
+      hovertemplate:'%{hovertext}<extra></extra>',
+      text:[isTop2?`★ ${ticker}`:ticker],
+      textposition:'top center',
+      textfont:{
+        size:  isTop2?15:isQuadTop?13:11,
+        color: isTop2?'#fde68a':isQuadTop?'#f1f5f9':'#94a3b8',
+        family:'Segoe UI, monospace',
       },
-      marker: {
-        size:    isTop ? 16 : isLeadTop2 ? 12 : isTop2 ? 9 : 7,
-        symbol:  isTop ? 'star' : 'circle',
-        color:   isTop ? '#fbbf24' : color,
-        opacity: isTop ? 1.0 : isLeadTop2 ? 1.0 : isTop2 ? 0.92 : 0.70,
-        line: {
-          color: isTop ? 'rgba(251,191,36,0.7)' : isLeadTop2 ? 'rgba(255,255,255,0.5)' : isTop2 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.15)',
-          width: isTop ? 2 : isLeadTop2 ? 2 : isTop2 ? 1.5 : 1,
+      marker:{
+        size:   isTop2?22:isQuadTop?14:9,
+        symbol: isTop2?'star':'circle',
+        color:  isTop2?'#fbbf24':color,
+        opacity:isTop2?1.0:isQuadTop?0.95:0.75,
+        line:{
+          color: isTop2?'rgba(253,230,138,.8)':isQuadTop?'rgba(255,255,255,.5)':'rgba(255,255,255,.2)',
+          width: isTop2?2.5:isQuadTop?1.8:1,
         },
       },
-      showlegend: false,
+      showlegend:false,
     });
   });
 
@@ -1245,54 +1362,64 @@ function buildNewsRRG(elId, trails) {
 
     const q = (last.quadrant || '').toLowerCase();
     const color = quadColors[q] || '#64748b';
-    const isTop2 = topSet.has(ticker);
+    const isT2  = top2Set.has(ticker);
+    const isQT  = quadTopSet.has(ticker);
 
-    // 화살표 끝점: 속도 비례, 최대 2.0 (IBEX 동일)
-    const tipScale = Math.min(speed * 2.5, 2.0);
+    const tipScale = Math.min(speed * 3.0, 2.5);
     const tip_raw_x = last.x + raw_dx * tipScale;
     const tip_raw_y = last.y + raw_dy * tipScale;
 
     arrowAnnotations.push({
       x: sxf(tip_raw_x), y: syf(tip_raw_y),
-      ax: sxf(last.x), ay: syf(last.y),
-      axref: 'x', ayref: 'y', xref: 'x', yref: 'y',
-      text: '', showarrow: true,
-      arrowhead: 2,
-      arrowsize:  isTop2 ? 1.0 : 0.7,
-      arrowwidth: isTop2 ? 1.8 : 0.9,
-      arrowcolor: color,
-      opacity: isTop2 ? 0.85 : 0.40,
+      ax: sxf(last.x),   ay: syf(last.y),
+      axref:'x', ayref:'y', xref:'x', yref:'y',
+      text:'', showarrow:true,
+      arrowhead:3,
+      arrowsize:  isT2?1.4:isQT?1.1:0.8,
+      arrowwidth: isT2?3.0:isQT?2.0:1.0,
+      arrowcolor: isT2?'#fbbf24':color,
+      opacity:    isT2?1.0:isQT?0.85:0.45,
     });
   });
 
   const C = 100;
   const layout = {
-    paper_bgcolor: 'transparent', plot_bgcolor: '#0a0d14',
-    font: { family: 'Segoe UI', size: 10, color: '#64748b' },
-    margin: { l: 10, r: 10, t: 10, b: 10 },
-    xaxis: {
-      title: { text: '← 약세 (Bearish)    감성 점수    강세 (Bullish) →', font: { size: 10, color: '#475569' } },
-      range: [xlo, xhi], showticklabels: false,
-      gridcolor: 'transparent', zerolinecolor: 'transparent',
+    paper_bgcolor:'transparent', plot_bgcolor:'#070b12',
+    font:{family:'Segoe UI, monospace', size:11, color:'#64748b'},
+    margin:{l:12, r:12, t:28, b:28},
+    xaxis:{
+      title:{text:'RS-Ratio  →', font:{size:11,color:'#334155'}},
+      range:[xlo,xhi], showticklabels:false,
+      gridcolor:'rgba(255,255,255,0.03)', zerolinecolor:'transparent',
     },
-    yaxis: {
-      title: { text: '모멘텀 (Momentum)', font: { size: 10, color: '#475569' } },
-      range: [ylo, yhi], showticklabels: false,
-      gridcolor: 'transparent', zerolinecolor: 'transparent',
+    yaxis:{
+      title:{text:'RS-Momentum  ↑', font:{size:11,color:'#334155'}},
+      range:[ylo,yhi], showticklabels:false,
+      gridcolor:'rgba(255,255,255,0.03)', zerolinecolor:'transparent',
     },
-    shapes: [
-      { type:'rect', x0:C, x1:xhi, y0:C, y1:yhi, xref:'x', yref:'y', layer:'below', fillcolor:'rgba(74,222,128,0.18)',  line:{width:0} },
-      { type:'rect', x0:xlo, x1:C,  y0:C, y1:yhi, xref:'x', yref:'y', layer:'below', fillcolor:'rgba(250,204,21,0.12)', line:{width:0} },
-      { type:'rect', x0:C, x1:xhi, y0:ylo, y1:C,  xref:'x', yref:'y', layer:'below', fillcolor:'rgba(59,130,246,0.12)', line:{width:0} },
-      { type:'rect', x0:xlo, x1:C,  y0:ylo, y1:C,  xref:'x', yref:'y', layer:'below', fillcolor:'rgba(239,68,68,0.18)',  line:{width:0} },
-      { type:'line', x0:C, x1:C, y0:ylo, y1:yhi, xref:'x', yref:'y', line:{color:'#4a5568', width:1.5, dash:'dot'} },
-      { type:'line', x0:xlo, x1:xhi, y0:C, y1:C, xref:'x', yref:'y', line:{color:'#4a5568', width:1.5, dash:'dot'} },
+    shapes:[
+      // 4분면 배경 — IBEX 동일 색상
+      {type:'rect',x0:C,x1:xhi,y0:C,y1:yhi, xref:'x',yref:'y',layer:'below',fillcolor:'rgba(34,197,94,0.13)',  line:{width:0}},
+      {type:'rect',x0:xlo,x1:C, y0:C,y1:yhi, xref:'x',yref:'y',layer:'below',fillcolor:'rgba(250,204,21,0.10)', line:{width:0}},
+      {type:'rect',x0:C,x1:xhi,y0:ylo,y1:C,  xref:'x',yref:'y',layer:'below',fillcolor:'rgba(59,130,246,0.10)', line:{width:0}},
+      {type:'rect',x0:xlo,x1:C, y0:ylo,y1:C,  xref:'x',yref:'y',layer:'below',fillcolor:'rgba(239,68,68,0.15)',  line:{width:0}},
+      // 중심 십자선
+      {type:'line',x0:C,x1:C,y0:ylo,y1:yhi, xref:'x',yref:'y',line:{color:'#2d3f52',width:1.5,dash:'dot'}},
+      {type:'line',x0:xlo,x1:xhi,y0:C,y1:C, xref:'x',yref:'y',line:{color:'#2d3f52',width:1.5,dash:'dot'}},
     ],
-    annotations: [
-      { x:xhi, y:yhi, xref:'x', yref:'y', text:'LEADING 강세가속',   showarrow:false, font:{size:11,color:'#4ade80'}, xanchor:'right', yanchor:'top' },
-      { x:xlo, y:yhi, xref:'x', yref:'y', text:'IMPROVING 회복중', showarrow:false, font:{size:11,color:'#facc15'}, xanchor:'left',  yanchor:'top' },
-      { x:xhi, y:ylo, xref:'x', yref:'y', text:'WEAKENING 약세전환', showarrow:false, font:{size:11,color:'#3b82f6'}, xanchor:'right', yanchor:'bottom' },
-      { x:xlo, y:ylo, xref:'x', yref:'y', text:'LAGGING 약세지속',   showarrow:false, font:{size:11,color:'#ef4444'}, xanchor:'left',  yanchor:'bottom' },
+    annotations:[
+      // 분면 라벨 — 크고 선명하게
+      {x:xhi,y:yhi, xref:'x',yref:'y',text:'LEADING',   showarrow:false,font:{size:14,color:'rgba(74,222,128,0.55)',family:'Segoe UI'},xanchor:'right',yanchor:'top'},
+      {x:xlo,y:yhi, xref:'x',yref:'y',text:'IMPROVING', showarrow:false,font:{size:14,color:'rgba(250,204,21,0.55)',family:'Segoe UI'},xanchor:'left', yanchor:'top'},
+      {x:xhi,y:ylo, xref:'x',yref:'y',text:'WEAKENING', showarrow:false,font:{size:14,color:'rgba(59,130,246,0.55)',family:'Segoe UI'},xanchor:'right',yanchor:'bottom'},
+      {x:xlo,y:ylo, xref:'x',yref:'y',text:'LAGGING',   showarrow:false,font:{size:14,color:'rgba(239,68,68,0.55)', family:'Segoe UI'},xanchor:'left', yanchor:'bottom'},
+      // 범례 (우상단 paper 좌표)
+      {xref:'paper',yref:'paper',x:1,y:1.04,xanchor:'right',yanchor:'bottom',showarrow:false,
+       text:'● <span style="color:#4ade80">Lead</span>  ● <span style="color:#facc15">Impv</span>  ● <span style="color:#3b82f6">Weak</span>  ● <span style="color:#ef4444">Lag</span>  ★ TOP2',
+       font:{size:11,color:'#64748b'},align:'right'},
+      // 부제목
+      {xref:'paper',yref:'paper',x:0,y:1.04,xanchor:'left',yanchor:'bottom',showarrow:false,
+       text:'bubble=RS-score · arrow=momentum',font:{size:10,color:'#334155'}},
       ...arrowAnnotations,
     ],
   };
@@ -1368,8 +1495,8 @@ const rrg=d.rrg_trails||[];
 document.getElementById('rrg_cnt').textContent=rrg.length+'종목';
 buildNewsRRG('rrg-plot', rrg);
 
-// Regime 게이지
-if(d.regime) renderRegime(d.regime);
+// IBEX 패널 렌더
+if(d.regime){renderFngPanel(d.regime);renderRegimePanel(d.regime);}
 
 document.getElementById('rt').textContent=new Date().toLocaleTimeString()})
 .catch(e=>{document.getElementById('rt').textContent='Err: '+e.message})}
