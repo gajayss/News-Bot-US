@@ -342,7 +342,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <style>
 :root{--bg:#0a0f1a;--panel:#131b2e;--hdr:#0d1322;--bdr:#1e2d4a;--t:#cbd5e1;--td:#64748b;--tw:#f1f5f9}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--t);font:17px/1.5 'Segoe UI',system-ui,sans-serif}
+body{background:var(--bg);color:var(--t);font:17px/1.5 'Segoe UI',system-ui,sans-serif;height:100vh;overflow:hidden}
 
 .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;animation:p 2s infinite}
 @keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
@@ -361,8 +361,7 @@ body{background:var(--bg);color:var(--t);font:17px/1.5 'Segoe UI',system-ui,sans
 /* VIX 반원 게이지 */
 .vix-svg{display:block;margin:0 auto}
 
-.wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px;margin:0}
-.fw{grid-column:1/-1}
+.wrap{display:flex;flex-direction:column;gap:10px;padding:10px;height:100vh;box-sizing:border-box;overflow:hidden}
 .pnl{background:var(--panel);border-radius:6px;border:1px solid var(--bdr);overflow:hidden}
 .ph{padding:10px 16px;background:var(--hdr);border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center}
 .ph b{font-size:14px;color:var(--tw);letter-spacing:.5px}
@@ -436,7 +435,7 @@ th{position:relative}
 .stat .sl{font-size:11px;color:var(--td);margin-top:2px}
 
 /* RRG — 뷰포트 기반 동적 높이 (Row0+시그널헤더 제외 나머지 채움) */
-.rrg-wrap{position:relative;width:100%;height:calc(100vh - 290px);min-height:420px;overflow:hidden}
+.rrg-wrap{position:relative;width:100%;height:100%}
 #rrg-plot{width:100%;height:100%}
 
 /* Signal filter buttons */
@@ -508,6 +507,17 @@ th{position:relative}
 .clk-label{font-size:11px;font-weight:600;min-width:32px;text-align:right}
 .clk-mhand{transform-box:fill-box;transform-origin:50% 100%}
 
+/* ── 좌측 네비게이션 사이드바 (IBEX_US 스타일) ── */
+.lnav{width:52px;flex-shrink:0;display:flex;flex-direction:column;gap:2px;padding:6px 4px;background:var(--panel);border-radius:6px;border:1px solid var(--bdr)}
+.lnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:5px;cursor:pointer;border:1px solid transparent;transition:all .15s;color:var(--td);text-align:center}
+.lnav-item:hover{background:rgba(255,255,255,.06);color:var(--tw)}
+.lnav-item.on{background:rgba(59,130,246,.15);border-color:#3b82f6;color:#93c5fd}
+.lnav-icon{font-size:16px;line-height:1}
+.lnav-label{font-size:9px;letter-spacing:.3px;font-weight:600;line-height:1.2}
+.lnav-badge{font-size:10px;font-weight:700;color:#60a5fa;min-height:14px}
+.lnav-div{height:1px;background:var(--bdr);margin:4px 0}
+.tab-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.tab-pane.hidden{display:none}
 </style></head>
 <body>
 <div class="wrap">
@@ -556,69 +566,108 @@ th{position:relative}
 
 </div>
 
-<!-- Row 1 Left: 매매 시그널 (아래 행) -->
-<div class="pnl">
-<div class="ph"><b>매매 시그널</b><small id="sc"></small>
-<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-<button id="af_all"    onclick="setAssetFilter('all')"    class="afbtn on">전체</button>
-<button id="af_STOCK"  onclick="setAssetFilter('STOCK')"  class="afbtn">📌 STOCK</button>
-<button id="af_OPTION" onclick="setAssetFilter('OPTION')" class="afbtn">⚡ OPTION</button>
-<span style="width:1px;background:var(--bdr);height:16px;display:inline-block;margin:0 2px"></span>
-<button id="sf_active" onclick="setSigFilter('active')" class="sfbtn on">활성만</button>
-<button id="sf_today"  onclick="setSigFilter('today')"  class="sfbtn">오늘</button>
-<button id="sf_3day"   onclick="setSigFilter('3day')"   class="sfbtn">3일</button>
-<button id="sf_all"    onclick="setSigFilter('all')"    class="sfbtn">전체</button>
-</div></div>
-<!-- 이모지 필터바 — 클릭 시 해당 사이드만 표시 (다시 클릭 시 해제) -->
-<div class="emj-bar">
-<span style="font-size:11px;color:var(--td);margin-right:4px">유형 필터:</span>
-<button id="emj_all"      onclick="setSideFilter('all')"      class="emjbtn on">🔲 전체</button>
-<button id="emj_BUY"      onclick="setSideFilter('BUY')"      class="emjbtn">🟢 BUY <span style="font-size:10px;color:var(--td)">주식매수·상승</span></button>
-<button id="emj_SELL"     onclick="setSideFilter('SELL')"     class="emjbtn">🔴 SELL <span style="font-size:10px;color:var(--td)">주식매도·하락</span></button>
-<button id="emj_BUY_CALL" onclick="setSideFilter('BUY_CALL')" class="emjbtn">📈 BUY_CALL <span style="font-size:10px;color:var(--td)">콜매수·상승베팅</span></button>
-<button id="emj_BUY_PUT"  onclick="setSideFilter('BUY_PUT')"  class="emjbtn">📉 BUY_PUT <span style="font-size:10px;color:var(--td)">풋매수·하락베팅</span></button>
-</div>
-<div class="pb"><table id="st"><thead><tr>
-<th data-c="0" data-t="s" style="width:60px">종목<div class="rz"></div></th>
-<th data-c="1" data-t="s" style="width:55px">섹터<div class="rz"></div></th>
-<th data-c="2" data-t="s" style="width:70px">산업군<div class="rz"></div></th>
-<th data-c="3" data-t="s" style="width:90px">방향<div class="rz"></div></th>
-<th data-c="4" data-t="s" style="width:55px">유형<div class="rz"></div></th>
-<th data-c="5" data-t="s" style="width:70px">축<div class="rz"></div></th>
-<th data-c="6" data-t="n" class="r" style="width:40px">수량<div class="rz"></div></th>
-<th data-c="7" data-t="n" class="r" style="width:50px">강도<div class="rz"></div></th>
-<th data-c="8" data-t="n" class="r" style="width:65px" title="동일 종목 이전 시그널 대비 강도 변화율 — 가속도 측정">변화율%<div class="rz"></div></th>
-<th data-c="9" data-t="s" style="width:85px">발생일시<div class="rz"></div></th>
-<th data-c="10" data-t="s" style="width:85px">종료<div class="rz"></div></th>
-<th data-c="11" data-t="s">사유<div class="rz"></div></th>
-</tr></thead><tbody id="sb"></tbody></table></div></div>
+<!-- Main content: flex:1 — 나머지 높이 전부 (스크롤 없음) -->
+<div style="display:flex;gap:10px;flex:1;min-height:0">
 
-<!-- Row 1 Right: RRG 뉴스 상대강도 (NEW) -->
-<div class="pnl">
-<div class="ph"><b>종목 RRG (뉴스 상대강도)</b><small id="rrg_cnt"></small></div>
-<div class="desc">워치리스트 종목의 뉴스 감성을 4분면으로 표시. <b style="color:#4ade80">Leading</b>(강세+가속) → <b style="color:#f87171">Weakening</b>(강세+감속) → <b style="color:#fb923c">Lagging</b>(약세+감속) → <b style="color:#38bdf8">Improving</b>(약세+가속) 순환. 원 크기=뉴스 건수.</div>
-<div class="rrg-wrap"><div id="rrg-plot"></div></div></div>
+  <!-- ★ 좌측 네비게이션 사이드바 (IBEX_US 스타일) -->
+  <div class="lnav">
+    <div class="lnav-item on" id="lnav-signals" onclick="switchTab('signals')">
+      <span class="lnav-icon">📊</span>
+      <span class="lnav-label">매매<br>시그널</span>
+      <span class="lnav-badge" id="lnav-sc">—</span>
+    </div>
+    <div class="lnav-div"></div>
+    <div class="lnav-item" id="lnav-news" onclick="switchTab('news')">
+      <span class="lnav-icon">📰</span>
+      <span class="lnav-label">뉴스<br>이벤트</span>
+      <span class="lnav-badge" id="lnav-nc">—</span>
+    </div>
+    <div class="lnav-div"></div>
+    <div class="lnav-item" id="lnav-constraint" onclick="switchTab('constraint')">
+      <span class="lnav-icon">🚫</span>
+      <span class="lnav-label">진입<br>제약</span>
+      <span class="lnav-badge" id="lnav-xc">—</span>
+    </div>
+  </div>
 
-<!-- Row 2 Left: 뉴스 이벤트 (이전 위치에서 아래로) -->
-<div class="pnl">
-<div class="ph"><b>뉴스 이벤트</b><small id="nc"></small></div>
-<div class="desc"><b>BEAR</b>=약세, <b>BULL</b>=강세. Score -1.0=최강 약세, +1.0=최강 강세. 내부자/CEO 매도는 강제 -1.0.</div>
-<div class="pb"><table id="nt"><thead><tr>
-<th data-c="0" data-t="s" style="width:75px">축<span class="sa"></span><div class="rz"></div></th>
-<th data-c="1" data-t="s" style="width:95px">유형<span class="sa"></span><div class="rz"></div></th>
-<th data-c="2" data-t="s" style="width:65px">방향<span class="sa"></span><div class="rz"></div></th>
-<th data-c="3" data-t="n" class="r" style="width:55px">점수<span class="sa"></span><div class="rz"></div></th>
-<th data-c="4" data-t="s" style="width:80px">출처<span class="sa"></span><div class="rz"></div></th>
-<th data-c="5" data-t="s" style="width:75px">시간<span class="sa"></span><div class="rz"></div></th>
-<th data-c="6" data-t="s" style="width:90px">종목<span class="sa"></span><div class="rz"></div></th>
-<th data-c="7" data-t="s">헤드라인 + 한글요약<span class="sa"></span><div class="rz"></div></th>
-</tr></thead><tbody id="nb"></tbody></table></div></div>
+  <!-- 메인 패널 (네비 선택에 따라 콘텐츠 전환) -->
+  <div class="pnl" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+    <!-- 패널 제목 표시줄 -->
+    <div class="ph" style="flex-shrink:0">
+      <b id="main-panel-title">매매 시그널</b>
+      <span style="display:flex;gap:6px;align-items:center"><small id="sc"></small><small id="nc" style="display:none"></small></span>
+    </div>
 
-<!-- Row 2 Right: 진입 제약 -->
-<div class="pnl">
-<div class="ph"><b>진입 제약</b></div>
-<div class="desc">FOMC/NFP 등 고충격 이벤트 전 자동 차단.</div>
-<div id="xb"></div>
+    <!-- 탭1: 매매시그널 -->
+    <div id="tab-signals" class="tab-pane">
+      <div style="padding:4px 10px;border-bottom:1px solid var(--bdr);display:flex;gap:5px;align-items:center;flex-wrap:wrap;flex-shrink:0;background:var(--hdr)">
+        <button id="af_all"    onclick="setAssetFilter('all')"    class="afbtn on">전체</button>
+        <button id="af_STOCK"  onclick="setAssetFilter('STOCK')"  class="afbtn">📌 STOCK</button>
+        <button id="af_OPTION" onclick="setAssetFilter('OPTION')" class="afbtn">⚡ OPTION</button>
+        <span style="width:1px;background:var(--bdr);height:14px;display:inline-block;margin:0 2px"></span>
+        <button id="sf_active" onclick="setSigFilter('active')" class="sfbtn on">활성만</button>
+        <button id="sf_today"  onclick="setSigFilter('today')"  class="sfbtn">오늘</button>
+        <button id="sf_3day"   onclick="setSigFilter('3day')"   class="sfbtn">3일</button>
+        <button id="sf_all"    onclick="setSigFilter('all')"    class="sfbtn">전체</button>
+      </div>
+      <div class="emj-bar" style="flex-shrink:0">
+        <span style="font-size:11px;color:var(--td);margin-right:4px">유형:</span>
+        <button id="emj_all"      onclick="setSideFilter('all')"      class="emjbtn on">🔲 전체</button>
+        <button id="emj_BUY"      onclick="setSideFilter('BUY')"      class="emjbtn">🟢 BUY</button>
+        <button id="emj_SELL"     onclick="setSideFilter('SELL')"     class="emjbtn">🔴 SELL</button>
+        <button id="emj_BUY_CALL" onclick="setSideFilter('BUY_CALL')" class="emjbtn">📈 BUY_CALL</button>
+        <button id="emj_BUY_PUT"  onclick="setSideFilter('BUY_PUT')"  class="emjbtn">📉 BUY_PUT</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;min-height:0">
+        <table id="st"><thead><tr>
+        <th data-c="0" data-t="s" style="width:60px">종목<div class="rz"></div></th>
+        <th data-c="1" data-t="s" style="width:55px">섹터<div class="rz"></div></th>
+        <th data-c="2" data-t="s" style="width:70px">산업군<div class="rz"></div></th>
+        <th data-c="3" data-t="s" style="width:90px">방향<div class="rz"></div></th>
+        <th data-c="4" data-t="s" style="width:55px">유형<div class="rz"></div></th>
+        <th data-c="5" data-t="s" style="width:70px">축<div class="rz"></div></th>
+        <th data-c="6" data-t="n" class="r" style="width:40px">수량<div class="rz"></div></th>
+        <th data-c="7" data-t="n" class="r" style="width:50px">강도<div class="rz"></div></th>
+        <th data-c="8" data-t="n" class="r" style="width:65px">변화율%<div class="rz"></div></th>
+        <th data-c="9" data-t="s" style="width:85px">발생일시<div class="rz"></div></th>
+        <th data-c="10" data-t="s" style="width:85px">종료<div class="rz"></div></th>
+        <th data-c="11" data-t="s">사유<div class="rz"></div></th>
+        </tr></thead><tbody id="sb"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 탭2: 뉴스이벤트 -->
+    <div id="tab-news" class="tab-pane hidden">
+      <div class="desc" style="flex-shrink:0"><b>BEAR</b>=약세, <b>BULL</b>=강세. Score -1.0=최강 약세, +1.0=최강 강세. 내부자/CEO 매도=강제 -1.0.</div>
+      <div style="flex:1;overflow-y:auto;min-height:0">
+        <table id="nt"><thead><tr>
+        <th data-c="0" data-t="s" style="width:75px">축<div class="rz"></div></th>
+        <th data-c="1" data-t="s" style="width:95px">유형<div class="rz"></div></th>
+        <th data-c="2" data-t="s" style="width:65px">방향<div class="rz"></div></th>
+        <th data-c="3" data-t="n" class="r" style="width:55px">점수<div class="rz"></div></th>
+        <th data-c="4" data-t="s" style="width:80px">출처<div class="rz"></div></th>
+        <th data-c="5" data-t="s" style="width:75px">시간<div class="rz"></div></th>
+        <th data-c="6" data-t="s" style="width:90px">종목<div class="rz"></div></th>
+        <th data-c="7" data-t="s">헤드라인 + 한글요약<div class="rz"></div></th>
+        </tr></thead><tbody id="nb"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 탭3: 진입제약 -->
+    <div id="tab-constraint" class="tab-pane hidden" style="overflow-y:auto">
+      <div class="desc">FOMC/NFP 등 고충격 이벤트 전 자동 차단.</div>
+      <div id="xb"></div>
+    </div>
+
+  </div><!-- /메인 패널 -->
+
+  <!-- Right: RRG — flex:1, 높이 100% 자동 -->
+  <div class="pnl" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+    <div class="ph"><b>종목 RRG (뉴스 상대강도)</b><small id="rrg_cnt"></small></div>
+    <div class="desc" style="flex-shrink:0">워치리스트 뉴스 감성 4분면. <b style="color:#4ade80">Leading</b>→<b style="color:#f87171">Weakening</b>→<b style="color:#fb923c">Lagging</b>→<b style="color:#38bdf8">Improving</b> 순환.</div>
+    <div style="flex:1;min-height:0"><div id="rrg-plot" style="width:100%;height:100%"></div></div>
+  </div>
+
 </div>
 
 </div>
@@ -840,6 +889,26 @@ const OPEN_SENTINEL='9999-12-31T23:59:59';
 let sigFilter='active';   // active | today | 3day | all
 let assetFilter='all';    // all | STOCK | OPTION
 let sideFilter='all';     // all | BUY_PUT | BUY_CALL | SELL
+
+/* ── 좌측 네비 전환 (IBEX_US 스타일) ── */
+const TAB_TITLES={signals:'매매 시그널',news:'뉴스 이벤트',constraint:'진입 제약'};
+function switchTab(name){
+  ['signals','news','constraint'].forEach(t=>{
+    const pane=document.getElementById('tab-'+t);
+    const nav=document.getElementById('lnav-'+t);
+    const isOn=(t===name);
+    pane.classList.toggle('hidden',!isOn);
+    if(nav) nav.classList.toggle('on',isOn);
+  });
+  const title=document.getElementById('main-panel-title');
+  if(title) title.textContent=TAB_TITLES[name]||'';
+  // sc/nc 배지 가시성
+  const sc=document.getElementById('sc'), nc=document.getElementById('nc');
+  if(sc) sc.style.display=name==='signals'?'':'none';
+  if(nc) nc.style.display=name==='news'?'':'none';
+  // Plotly RRG 리사이즈
+  if(window.Plotly){try{Plotly.Plots.resize(document.getElementById('rrg-plot'))}catch(e){}}
+}
 
 function setSigFilter(f){
   sigFilter=f;
@@ -1398,6 +1467,8 @@ document.getElementById('stb').innerHTML=`
 
 const evr=ev.slice().reverse();
 document.getElementById('nc').textContent=evr.length+'건';
+const lnavNc=document.getElementById('lnav-nc');
+if(lnavNc) lnavNc.textContent=evr.length;
 let nh='';
 for(const e of evr){const c=AC[e.axis_id||'UNKNOWN']||'#4b5563';
 const dc=e.direction==='BULLISH'?'bb':e.direction==='BEARISH'?'br':'bn';
@@ -1421,6 +1492,8 @@ document.getElementById('nb').innerHTML=nh;
 const allSigs=d.all_signals||[];
 renderSignals(allSigs);
 document.getElementById('sc').textContent=allSigs.length+'건';
+const lnavSc=document.getElementById('lnav-sc');
+if(lnavSc) lnavSc.textContent=allSigs.length;
 
 const cl=d.calendar_events||[];
 document.getElementById('cc').textContent=cl.length+'건';
