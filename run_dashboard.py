@@ -254,12 +254,14 @@ th{position:relative}
 
 /* Badges */
 .b{display:inline-block;padding:3px 9px;border-radius:4px;font:700 13px/1.4 inherit}
-/* 5색 방향 뱃지: Stock Buy=Green, Stock Sell=Red, Option BUY_CALL=Yellow, Option BUY_PUT=Orange, Option Sell=Blue */
-.bsg{background:#14532d;color:#4ade80}        /* Stock BUY — Green */
-.bsr{background:#7f1d1d;color:#fca5a5}        /* Stock SELL — Red */
-.bsyc{background:#713f12;color:#fde68a}       /* Option BUY_CALL — Yellow */
-.bsyp{background:#7c2d12;color:#fdba74}       /* Option BUY_PUT — Orange */
-.bsb{background:#1e3a5f;color:#93c5fd}        /* Option SELL — Blue */
+/* 5색 방향 뱃지 — STOCK/OPTION 계열 완전 분리
+   STOCK 계열 : Green(매수) / Red(매도) — 직관적 매매 색상
+   OPTION 계열: Cyan(BUY_CALL) / Purple(BUY_PUT) / Sky(SELL) — 파란 계열 고유 영역 */
+.bsg {background:#14532d;color:#4ade80;border:1px solid #16a34a}   /* Stock BUY    — 🟢 Green  */
+.bsr {background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626}   /* Stock SELL   — 🔴 Red    */
+.bsyc{background:#164e63;color:#67e8f9;border:1px solid #0e7490}   /* Opt BUY_CALL — 🔵 Cyan   */
+.bsyp{background:#3b0764;color:#d8b4fe;border:1px solid #7c3aed}   /* Opt BUY_PUT  — 🟣 Purple */
+.bsb {background:#1e3a5f;color:#93c5fd;border:1px solid #2563eb}   /* Opt SELL     — 💙 Blue   */
 .bn{background:#1f2937;color:#6b7280}
 .bx{padding:3px 9px;border-radius:4px;font:700 12px/1.4 inherit}
 .sp{color:#4ade80;font-weight:700}.sn{color:#f87171;font-weight:700}.sz{color:var(--td)}
