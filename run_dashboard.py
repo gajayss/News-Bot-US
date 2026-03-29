@@ -382,11 +382,7 @@ body{background:var(--bg);color:var(--t);font:17px/1.5 'Segoe UI',system-ui,sans
 .axc i{background:rgba(255,255,255,.12);padding:2px 10px;border-radius:4px;font:700 14px/1.4 inherit;font-style:normal}
 .axc .ar{display:flex;align-items:center;gap:6px}
 
-/* Source status */
-.src{display:flex;gap:8px;padding:10px 18px;flex-wrap:wrap}
-.si{padding:5px 12px;border-radius:4px;font-size:12px;background:rgba(255,255,255,.04);border:1px solid var(--bdr);display:flex;align-items:center;gap:6px}
-.si .sd{width:6px;height:6px;border-radius:50%}
-.si .sd.on{background:#22c55e}.si .sd.off{background:#ef4444}.si .sd.wait{background:#f59e0b}
+
 
 /* Table */
 table{width:100%;border-collapse:collapse}
@@ -549,7 +545,6 @@ th{position:relative}
     <div class="desc" style="font-size:11px"><b>GOVERN</b> &gt; <b>FEDWALL</b> &gt; <b>ECONOMY</b> &gt; <b>CORPORATE</b> &gt; <b>THEME</b></div>
     <div class="axr" id="ab"></div>
     <div class="stats" id="stb"></div>
-    <div class="src" id="srcb"></div>
   </div>
 
   <!-- ③ 우측 열: 경제 캘린더 — 나머지 공간 전부, 전체 높이 -->
@@ -682,16 +677,6 @@ function krTag(headline){
 const tags=[];const seen=new Set();
 for(const[re,kr]of KR_MAP){if(re.test(headline)&&!seen.has(kr)){tags.push(kr);seen.add(kr);if(tags.length>=3)break}}
 return tags.length?'<span style="color:#fbbf24;font-size:13px;margin-left:6px">['+tags.join(' | ')+']</span>':''}
-const SRCS=[
-{n:'FinancialJuice',d:'실시간 매크로 뉴스 (RSS)',cy:'10분'},
-{n:'Finnhub',d:'뉴스 + 캘린더 API',cy:'3분'},
-{n:'Finviz',d:'SEC Form 4 내부자 매도',cy:'1시간'},
-{n:'Dataroma',d:'슈퍼인베스터 82명 추적',cy:'1시간'},
-{n:'Finnhub Insider',d:'내부자 거래 API',cy:'2시간'},
-{n:'ARK Invest',d:'캐시우드 매매 추적',cy:'1일'},
-{n:'HedgeFollow',d:'헤지펀드 13F 추적',cy:'수동'},
-{n:'Fintel',d:'공매도 비율 (준비중)',cy:'-'}
-];
 // ── 날짜/시간 공통 포맷 (전체 통일) ────────────────────────────
 // 모든 날짜: YYYY-MM-DD, 시각: HH:MM, 짧은날짜: MM-DD HH:MM
 function fmtDate(s){if(!s)return '';return String(s).substring(0,10)}
@@ -1165,13 +1150,6 @@ const mv=e2=>{th.style.width=Math.max(40,sw+e2.pageX-sx)+'px'};
 const up=()=>{r.classList.remove('on');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};
 document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);e.preventDefault()})});
 
-// 소스 현황 렌더
-let srch='';
-SRCS.forEach(s=>{
-const st=s.cy==='-'?'off':s.cy==='수동'?'wait':'on';
-srch+=`<div class="si"><span class="sd ${st}"></span>${s.n}<span style="color:var(--td);font-size:11px">${s.d} | ${s.cy}</span></div>`;
-});
-document.getElementById('srcb').innerHTML=srch;
 
 // ── RRG 렌더링 (IBEX_US buildRRGWithTrails 적용) ──────────────
 function buildNewsRRG(elId, trails) {
