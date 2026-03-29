@@ -469,9 +469,9 @@ th{position:relative}
 .bact{background:#052e16;color:#4ade80;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:600}
 .bexp{background:#1c1917;color:#78716c;padding:2px 7px;border-radius:3px;font-size:11px}
 
-/* ── 경제 캘린더 (재설계) ───────────────────────────── */
-.cal-fbar{display:flex;gap:5px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bdr);background:rgba(255,255,255,.01)}
-.cfbtn{padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--td);transition:all .15s;white-space:nowrap}
+/* ── 경제 캘린더 — FJ 타임라인 스타일 (깍두기 박스 제거) ── */
+.cal-fbar{display:flex;gap:4px;flex-wrap:wrap;padding:5px 10px;border-bottom:1px solid var(--bdr)}
+.cfbtn{padding:2px 7px;border-radius:3px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--td);transition:all .15s;white-space:nowrap}
 .cfbtn.on{color:#fff;border-color:currentColor}
 .cfbtn:hover:not(.on){background:rgba(255,255,255,.06);color:var(--tw)}
 .cfbtn[data-k="FOMC"].on{background:#7f1d1d;border-color:#ef4444;color:#fca5a5}
@@ -483,54 +483,41 @@ th{position:relative}
 .cfbtn[data-k="EARNINGS"].on{background:#1e1b4b;border-color:#6366f1;color:#a5b4fc}
 .cfbtn[data-k="ALL"].on{background:#1e293b;border-color:#475569;color:#f1f5f9}
 
-/* Date group separator */
-.cal-day-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px 4px;color:#475569;font-size:11px;letter-spacing:.5px}
-.cal-day-hdr .cdl{flex:1;height:1px;background:var(--bdr)}
-.cal-day-hdr .cdt{white-space:nowrap;font-weight:600;color:#64748b}
+/* 날짜 구분선 — FJ 스타일 */
+.cal-day-hdr{display:flex;align-items:center;gap:6px;padding:7px 10px 3px}
+.cal-day-hdr .cdl{flex:1;height:1px;background:rgba(255,255,255,.07)}
+.cal-day-hdr .cdt{white-space:nowrap;font-weight:700;font-size:11px;color:#334155;letter-spacing:.5px}
 
-/* Event card grid */
-.cal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 10px 8px}
-@media(max-width:900px){.cal-grid{grid-template-columns:1fr}}
-
-/* Individual event card */
-.cal-card{background:rgba(255,255,255,.025);border-radius:6px;border:1px solid var(--bdr);padding:10px 12px;display:flex;flex-direction:column;gap:6px;transition:border-color .2s;position:relative}
-.cal-card:hover{border-color:#334155}
-.cal-card.past{opacity:.35;filter:saturate(0)}
-.cal-card.urgent{border-color:#ef444460;animation:urg-pulse 2s ease-in-out infinite}
-@keyframes urg-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.15)}50%{box-shadow:0 0 0 6px rgba(239,68,68,.0)}}
-
-.cal-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
-.cal-imp{font-size:13px;letter-spacing:1px;line-height:1}
-.cal-cat{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.5px}
-.cal-name{font-size:13px;color:var(--tw);line-height:1.35;font-weight:500}
-.cal-vals{display:flex;gap:10px;flex-wrap:wrap}
-.cv-box{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:48px}
-.cv-lbl{font-size:9px;color:#475569;letter-spacing:.5px;font-weight:600}
-.cv-val{font-size:13px;font-weight:700;color:#94a3b8}
-.cv-val.act-beat{color:#4ade80}
-.cv-val.act-miss{color:#f87171}
-.cv-val.act-val{color:#f1f5f9}
-.cv-val.fcst-val{color:#93c5fd}
-.cv-val.prev-val{color:#64748b}
-.cal-footer{display:flex;align-items:center;justify-content:space-between}
-.cal-time-txt{font-size:11px;color:#475569}
+/* 이벤트 한 줄 row — 박스 없음 */
+.cal-row{display:flex;align-items:center;gap:7px;padding:4px 10px;border-top:1px solid rgba(255,255,255,.03);font-size:12px;line-height:1.3}
+.cal-row:hover{background:rgba(255,255,255,.025)}
+.cal-row.past{opacity:.28}
+.cal-row.urgent{background:rgba(239,68,68,.07)}
+.cal-imp-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.cal-time{color:#475569;font-size:11px;min-width:38px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.cal-cat-tag{padding:1px 5px;border-radius:2px;font-size:10px;font-weight:700;flex-shrink:0;letter-spacing:.3px}
+.cal-ename{color:#94a3b8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-ename.urg{color:#fca5a5}
+.cal-vals-inline{display:flex;gap:4px;flex-shrink:0;font-size:11px;font-variant-numeric:tabular-nums;align-items:center}
+.cv-act{color:#94a3b8;font-weight:600}
+.cv-act.beat{color:#4ade80}
+.cv-act.miss{color:#f87171}
+.cv-fcst{color:#60a5fa}
+.cv-prev{color:#475569}
+.cv-sep{color:#1e293b;font-size:10px}
 
 /* Animated SVG clock */
-.clk-wrap{display:flex;align-items:center;gap:5px}
+.clk-wrap{display:flex;align-items:center;gap:4px}
 .clk-svg{flex-shrink:0}
-.clk-label{font-size:11px;font-weight:600;min-width:36px;text-align:right}
+.clk-label{font-size:11px;font-weight:600;min-width:32px;text-align:right}
 .clk-mhand{transform-box:fill-box;transform-origin:50% 100%}
 
 </style></head>
 <body>
 <div class="wrap">
 
-<!-- Row 0: 3열 레이아웃
-     Col1(230px): [공포&탐욕] 위 / [MARKET REGIME] 아래
-     Col2(420px): [5축 뉴스 분류] 전체 높이
-     Col3(flex:1): [경제 캘린더]  전체 높이
--->
-<div class="fw" style="display:flex;gap:10px;align-items:stretch;min-height:300px">
+<!-- Row 0: 3열 레이아웃 (참고 게이지 좌 | 5축 중 | 캘린더 우) -->
+<div class="fw" style="display:flex;gap:10px;align-items:stretch">
 
   <!-- ① 좌측 열: 공포&탐욕(위) + MARKET REGIME(아래) — 230px 고정 -->
   <div style="display:flex;flex-direction:column;gap:10px;width:230px;flex-shrink:0">
@@ -807,7 +794,7 @@ function renderCalendar(events){
   initCalFilter(events);
   const filtered=calFilter==='ALL'?events:events.filter(e=>(e.category||'OTHER')===calFilter);
 
-  // 날짜별로 그룹핑
+  // 날짜별 그룹핑
   const byDate={};
   for(const ev of filtered){
     const d=fmtDate(ev.date)||'미정';
@@ -819,51 +806,48 @@ function renderCalendar(events){
   let h='';
   for(const dk of dateKeys){
     const dow=fmtDayOfWeek(dk);
-    h+=`<div class="cal-day-hdr"><div class="cdl"></div><div class="cdt">${dk} (${dow})</div><div class="cdl"></div></div>`;
-    h+=`<div class="cal-grid">`;
+    // 날짜 구분선 (FJ 스타일)
+    h+=`<div class="cal-day-hdr"><div class="cdl"></div><div class="cdt">── ${dk} (${dow}) ──</div><div class="cdl"></div></div>`;
     for(const ev of byDate[dk]){
       const ps=ev.status==='PAST';
       const hu=ev.hours_until||0;
       const urgent=!ps&&hu>=0&&hu<4;
       const imp=ev.impact_level||1;
-      const impEm=IMP_EMOJI[imp]||'⚫';
       const impCol=IMP_COL[imp]||'#475569';
       const catCol=CAT_COLOR[ev.category||'OTHER']||'#475569';
       const cat=ev.category||'OTHER';
-
-      // ACT / FCST / PREV 값
       const unit=ev.unit||'';
       const actV=ev.actual!==undefined&&ev.actual!==null;
       const fcsV=ev.estimate!==undefined&&ev.estimate!==null;
       const prvV=ev.prev!==undefined&&ev.prev!==null;
 
-      let actCls='cv-val act-val';
-      if(actV && fcsV){
-        actCls=ev.actual>ev.estimate?'cv-val act-beat':'cv-val act-miss';
-      }
+      // ACT beat/miss 색상
+      let actCls='cv-act';
+      if(actV&&fcsV) actCls+=(ev.actual>=ev.estimate?' beat':' miss');
 
-      const valHtml=`<div class="cal-vals">
-        <div class="cv-box"><div class="cv-lbl">ACT</div><div class="${actCls}">${actV?fmtVal(ev.actual,unit):'–'}</div></div>
-        <div class="cv-box"><div class="cv-lbl">FCST</div><div class="cv-val fcst-val">${fcsV?fmtVal(ev.estimate,unit):'–'}</div></div>
-        <div class="cv-box"><div class="cv-lbl">PREV</div><div class="cv-val prev-val">${prvV?fmtVal(ev.prev,unit):'–'}</div></div>
-      </div>`;
+      // 값 인라인: ACT / FCST / PREV
+      const valHtml=`<span class="cal-vals-inline">
+<span class="${actCls}">${actV?fmtVal(ev.actual,unit):'–'}</span>
+<span class="cv-sep">/</span>
+<span class="cv-fcst">${fcsV?fmtVal(ev.estimate,unit):'–'}</span>
+<span class="cv-sep">/</span>
+<span class="cv-prev">${prvV?fmtVal(ev.prev,unit):'–'}</span>
+</span>`;
 
-      h+=`<div class="cal-card ${ps?'past':''} ${urgent?'urgent':''}">
-<div class="cal-card-top">
-  <span class="cal-imp" title="충격도 ${imp}">${impEm}</span>
-  <span class="cal-cat" style="background:${catCol}22;color:${catCol}">${cat}</span>
-</div>
-<div class="cal-name">${ev.event_name||''}</div>
+      const timeStr=ev.time?fmtTime(ev.time):'TBD';
+
+      // 한 줄 row — 박스 없음
+      h+=`<div class="cal-row ${ps?'past':''} ${urgent?'urgent':''}">
+<span class="cal-imp-dot" style="background:${impCol}" title="충격도 ${imp}"></span>
+<span class="cal-time">${timeStr}</span>
+<span class="cal-cat-tag" style="background:${catCol}25;color:${catCol}">${cat}</span>
+<span class="cal-ename ${urgent?'urg':''}">${ev.event_name||''}</span>
 ${valHtml}
-<div class="cal-footer">
-  <div class="cal-time-txt">${fmtDate(ev.date)} ${fmtTime(ev.time)} UTC</div>
-  ${clockSvg(hu)}
-</div>
+${!ps?clockSvg(hu):''}
 </div>`;
     }
-    h+='</div>';
   }
-  document.getElementById('cb').innerHTML=h||'<div style="padding:20px;color:var(--td)">해당 유형의 이벤트 없음</div>';
+  document.getElementById('cb').innerHTML=h||'<div style="padding:14px;color:var(--td);font-size:12px">이벤트 없음</div>';
 }
 
 let ss={};
@@ -957,11 +941,10 @@ const DIR_CFG={
   SHORT:{color:'#ef4444',icon:'▼',label:'SHORT'},
 };
 
-/* F&G 반원 스피드계 게이지 SVG (0~100) */
+/* F&G 반원 게이지 SVG — 콤팩트 (참고용 위젯) */
 function fngGaugeSvg(score){
-  const W=220,H=128,cx=110,cy=115,R=92,rW=15;
+  const W=160,H=90,cx=80,cy=84,R=65,rW=11;
   const cl=Math.max(0,Math.min(100,score||0));
-  // 0→왼쪽(-π), 100→오른쪽(0)
   function s2a(s){return(s/100)*Math.PI-Math.PI;}
   function arcP(s1,s2){
     const a1=s2a(s1),a2=s2a(s2);
@@ -970,37 +953,28 @@ function fngGaugeSvg(score){
     return `M${x1},${y1} A${R},${R} 0 0,1 ${x2},${y2}`;
   }
   const na=s2a(cl);
-  const nx=cx+(R-10)*Math.cos(na), ny=cy+(R-10)*Math.sin(na);
+  const nx=cx+(R-8)*Math.cos(na), ny=cy+(R-8)*Math.sin(na);
   const nc=cl<25?'#ef4444':cl<45?'#f97316':cl<55?'#94a3b8':cl<75?'#22c55e':'#10b981';
   const lbl=cl<25?'극도공포':cl<45?'공포':cl<55?'중립':cl<75?'탐욕':'극도탐욕';
-  const segs=[
-    [0,25,'#ef4444'],[25,45,'#f97316'],[45,55,'#94a3b8'],[55,75,'#22c55e'],[75,100,'#10b981']
-  ];
+  const segs=[[0,25,'#ef4444'],[25,45,'#f97316'],[45,55,'#94a3b8'],[55,75,'#22c55e'],[75,100,'#10b981']];
   const segH=segs.map(([s1,s2,c])=>`<path d="${arcP(s1,s2)}" stroke="${c}" stroke-width="${rW}" fill="none" opacity="0.85"/>`).join('');
-  // 눈금 라벨
-  const ticks=[{v:0,t:'극공'},{v:25,t:'공포'},{v:50,t:'중립'},{v:75,t:'탐욕'},{v:100,t:'극탐'}];
-  const tickH=ticks.map(({v,t})=>{
-    const a=s2a(v); const r2=R+16;
-    return `<text x="${cx+r2*Math.cos(a)}" y="${cy+r2*Math.sin(a)+3}" text-anchor="middle" fill="#334155" font-size="9">${t}</text>`;
-  }).join('');
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;margin:0 auto">
-  <path d="${arcP(0,100)}" stroke="#1a2030" stroke-width="${rW+3}" fill="none"/>
+  <path d="${arcP(0,100)}" stroke="#1a2030" stroke-width="${rW+2}" fill="none"/>
   ${segH}
-  ${tickH}
-  <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nc}" stroke-width="3.5" stroke-linecap="round"/>
-  <circle cx="${cx}" cy="${cy}" r="7" fill="${nc}" opacity="0.9"/>
-  <text x="${cx}" y="${cy-22}" text-anchor="middle" fill="${nc}" font-size="30" font-weight="800" font-family="monospace">${cl>0?Math.round(cl):'—'}</text>
-  <text x="${cx}" y="${cy-6}" text-anchor="middle" fill="${nc}" font-size="12" font-weight="600">${lbl}</text>
+  <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nc}" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="${cx}" cy="${cy}" r="5" fill="${nc}" opacity="0.9"/>
+  <text x="${cx}" y="${cy-14}" text-anchor="middle" fill="${nc}" font-size="22" font-weight="800" font-family="monospace">${cl>0?Math.round(cl):'—'}</text>
+  <text x="${cx}" y="${cy-3}" text-anchor="middle" fill="${nc}" font-size="9" font-weight="600">${lbl}</text>
 </svg>`;
 }
 
 function fngHistCell(score,label){
   const c=score<25?'#ef4444':score<45?'#f97316':score<55?'#94a3b8':score<75?'#22c55e':'#10b981';
-  const t=score<25?'극도공포':score<45?'공포':score<55?'중립':score<75?'탐욕':'극도탐욕';
+  const t=score<25?'극공':score<45?'공포':score<55?'중립':score<75?'탐욕':'극탐';
   return `<div style="text-align:center;flex:1">
-    <div style="font:700 18px/1 monospace;color:${c}">${Math.round(score)}</div>
-    <div style="font-size:9px;color:${c};margin-top:2px">${t}</div>
-    <div style="font-size:10px;color:#475569;margin-top:1px">${label}</div>
+    <div style="font:700 14px/1 monospace;color:${c}">${Math.round(score)}</div>
+    <div style="font-size:9px;color:${c};margin-top:1px">${t}</div>
+    <div style="font-size:9px;color:#334155;margin-top:1px">${label}</div>
   </div>`;
 }
 
@@ -1070,9 +1044,9 @@ function renderRegimePanel(rm){
                   rm.tnx_chg<0?`<span style="color:#22c55e;font-size:10px"> ${rm.tnx_chg.toFixed(3)}</span>`:'';
 
   const row=(lbl,val,extra='')=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #0d1117">
-      <span style="font-size:11px;color:#475569">${lbl}</span>
-      <span style="font-size:13px;font-weight:700;font-family:monospace;color:var(--tw)">${val}${extra}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #0d1117">
+      <span style="font-size:10px;color:#475569">${lbl}</span>
+      <span style="font-size:11px;font-weight:700;font-family:monospace;color:var(--tw)">${val}${extra}</span>
     </div>`;
 
   document.getElementById('regime-ts').textContent=rm.last_updated||'—';
