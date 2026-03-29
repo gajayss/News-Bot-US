@@ -254,10 +254,11 @@ th{position:relative}
 
 /* Badges */
 .b{display:inline-block;padding:3px 9px;border-radius:4px;font:700 13px/1.4 inherit}
-/* 4색 방향 뱃지: Stock Buy=Green, Option Buy=Yellow, Stock Sell=Red, Option Sell=Blue */
-.bsg{background:#14532d;color:#4ade80}        /* Stock BUY_CALL — Green */
-.bsy{background:#713f12;color:#fde68a}        /* Option BUY (PUT/CALL) — Yellow */
+/* 5색 방향 뱃지: Stock Buy=Green, Stock Sell=Red, Option BUY_CALL=Yellow, Option BUY_PUT=Orange, Option Sell=Blue */
+.bsg{background:#14532d;color:#4ade80}        /* Stock BUY — Green */
 .bsr{background:#7f1d1d;color:#fca5a5}        /* Stock SELL — Red */
+.bsyc{background:#713f12;color:#fde68a}       /* Option BUY_CALL — Yellow */
+.bsyp{background:#7c2d12;color:#fdba74}       /* Option BUY_PUT — Orange */
 .bsb{background:#1e3a5f;color:#93c5fd}        /* Option SELL — Blue */
 .bn{background:#1f2937;color:#6b7280}
 .bx{padding:3px 9px;border-radius:4px;font:700 12px/1.4 inherit}
@@ -405,9 +406,10 @@ th{position:relative}
 <div class="emj-bar">
 <span style="font-size:11px;color:var(--td);margin-right:4px">유형 필터:</span>
 <button id="emj_all"      onclick="setSideFilter('all')"      class="emjbtn on">🔲 전체</button>
-<button id="emj_BUY_PUT"  onclick="setSideFilter('BUY_PUT')"  class="emjbtn">📉 BUY_PUT <span style="font-size:10px;color:var(--td)">풋매수·하락베팅</span></button>
+<button id="emj_BUY"      onclick="setSideFilter('BUY')"      class="emjbtn">🟢 BUY <span style="font-size:10px;color:var(--td)">주식매수·상승</span></button>
+<button id="emj_SELL"     onclick="setSideFilter('SELL')"     class="emjbtn">🔴 SELL <span style="font-size:10px;color:var(--td)">주식매도·하락</span></button>
 <button id="emj_BUY_CALL" onclick="setSideFilter('BUY_CALL')" class="emjbtn">📈 BUY_CALL <span style="font-size:10px;color:var(--td)">콜매수·상승베팅</span></button>
-<button id="emj_SELL"     onclick="setSideFilter('SELL')"     class="emjbtn">💸 SELL <span style="font-size:10px;color:var(--td)">주식매도</span></button>
+<button id="emj_BUY_PUT"  onclick="setSideFilter('BUY_PUT')"  class="emjbtn">📉 BUY_PUT <span style="font-size:10px;color:var(--td)">풋매수·하락베팅</span></button>
 </div>
 <div class="pb"><table id="st"><thead><tr>
 <th data-c="0" data-t="s" style="width:60px">종목<div class="rz"></div></th>
@@ -722,12 +724,12 @@ function setSideFilter(f){
  * Option SELL     → Blue   (.bsb)
  * ---------------------------------------------------------------- */
 function sideBadgeClass(side, ac){
-  const isBuy=side.includes('BUY');
   const isStk=(ac==='STOCK');
-  if(isStk && isBuy)  return 'bsg';
-  if(!isStk && isBuy) return 'bsy';
-  if(isStk && !isBuy) return 'bsr';
-  return 'bsb';
+  if(side==='BUY')      return 'bsg';   // Stock 매수 — Green
+  if(side==='SELL' && isStk) return 'bsr';  // Stock 매도 — Red
+  if(side==='BUY_CALL') return 'bsyc';  // Option 콜매수 — Yellow
+  if(side==='BUY_PUT')  return 'bsyp';  // Option 풋매수 — Orange
+  return 'bsb';                          // Option SELL — Blue
 }
 
 /* ----------------------------------------------------------------
