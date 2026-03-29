@@ -525,41 +525,47 @@ th{position:relative}
 <body>
 <div class="wrap">
 
-<!-- Row 0: 5축 + 소스 + 통계 + Regime 게이지 (full width) -->
-<div class="pnl fw">
-<div class="ph">
-  <div style="display:flex;align-items:center;gap:10px">
-    <b>5축 뉴스 분류</b><small id="te"></small>
-    <span style="font-size:11px;color:var(--td)"><span class="dot"></span> {{ source_mode }} · {{ watchlist_count }}종목</span>
-    <span id="rt" style="font-size:11px;color:var(--td)"></span>
+<!-- Row 0: [공포&탐욕 + MARKET REGIME 좌측] + [5축 뉴스 분류 우측] -->
+<div class="fw" style="display:flex;gap:10px;align-items:stretch">
+
+  <!-- 좌측: 공포&탐욕 + MARKET REGIME (세로 스택) -->
+  <div style="display:flex;flex-direction:column;gap:10px;width:240px;flex-shrink:0">
+    <div class="pnl" style="flex:1">
+    <div class="ph" style="padding:7px 14px">
+      <span style="font-size:12px;color:var(--td)">● 공포 &amp; 탐욕 지수</span>
+      <small>DAILY</small>
+    </div>
+    <div id="fng-body" style="padding:8px 14px 10px">로딩중…</div>
+    </div>
+    <div class="pnl" style="flex:1">
+    <div class="ph" style="padding:7px 14px">
+      <span style="font-size:12px;color:#ef4444">● MARKET REGIME</span>
+      <small id="regime-ts">—</small>
+    </div>
+    <div id="regime-body" style="padding:8px 14px 10px">로딩중…</div>
+    </div>
   </div>
-</div>
-<div class="desc"><b>GOVERN</b>(정부/전쟁) > <b>FEDWALL</b>(연준/월가) > <b>ECONOMY</b>(경제지표) > <b>CORPORATE</b>(기업/내부자/헤지펀드) > <b>THEME</b>(테마/신기술) 순 우선순위</div>
-<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px">
-  <div class="axr" id="ab" style="flex:1;min-width:180px"></div>
-  <div class="stats" id="stb" style="flex:1;min-width:180px"></div>
-</div>
-<div class="src" id="srcb"></div>
+
+  <!-- 우측: 5축 뉴스 분류 -->
+  <div class="pnl" style="flex:1;min-width:0">
+  <div class="ph">
+    <div style="display:flex;align-items:center;gap:10px">
+      <b>5축 뉴스 분류</b><small id="te"></small>
+      <span style="font-size:11px;color:var(--td)"><span class="dot"></span> {{ source_mode }} · {{ watchlist_count }}종목</span>
+      <span id="rt" style="font-size:11px;color:var(--td)"></span>
+    </div>
+  </div>
+  <div class="desc"><b>GOVERN</b>(정부/전쟁) > <b>FEDWALL</b>(연준/월가) > <b>ECONOMY</b>(경제지표) > <b>CORPORATE</b>(기업/내부자/헤지펀드) > <b>THEME</b>(테마/신기술) 순 우선순위</div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px">
+    <div class="axr" id="ab" style="flex:1;min-width:180px"></div>
+    <div class="stats" id="stb" style="flex:1;min-width:180px"></div>
+  </div>
+  <div class="src" id="srcb"></div>
+  </div>
+
 </div>
 
-<!-- Row 1: 공포&탐욕 게이지 + MARKET REGIME (IBEX_US 이식) -->
-<div class="pnl">
-<div class="ph" style="padding:7px 14px">
-  <span style="font-size:12px;color:var(--td)">● 공포 &amp; 탐욕 지수</span>
-  <small>DAILY</small>
-</div>
-<div id="fng-body" style="padding:8px 14px 10px">로딩중…</div>
-</div>
-
-<div class="pnl">
-<div class="ph" style="padding:7px 14px">
-  <span style="font-size:12px;color:#ef4444">● MARKET REGIME</span>
-  <small id="regime-ts">—</small>
-</div>
-<div id="regime-body" style="padding:8px 14px 10px">로딩중…</div>
-</div>
-
-<!-- Row 1 Left: 매매 시그널 -->
+<!-- Row 1 Left: 매매 시그널 (아래 행) -->
 <div class="pnl">
 <div class="ph"><b>매매 시그널</b><small id="sc"></small>
 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
