@@ -289,6 +289,59 @@ th{position:relative}
 /* Active / expired badge */
 .bact{background:#052e16;color:#4ade80;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:600}
 .bexp{background:#1c1917;color:#78716c;padding:2px 7px;border-radius:3px;font-size:11px}
+
+/* ── 경제 캘린더 (재설계) ───────────────────────────── */
+.cal-fbar{display:flex;gap:5px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bdr);background:rgba(255,255,255,.01)}
+.cfbtn{padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--td);transition:all .15s;white-space:nowrap}
+.cfbtn.on{color:#fff;border-color:currentColor}
+.cfbtn:hover:not(.on){background:rgba(255,255,255,.06);color:var(--tw)}
+.cfbtn[data-k="FOMC"].on{background:#7f1d1d;border-color:#ef4444;color:#fca5a5}
+.cfbtn[data-k="FED_SPEAK"].on{background:#3b0764;border-color:#a855f7;color:#d8b4fe}
+.cfbtn[data-k="PCE"].on,.cfbtn[data-k="CPI"].on{background:#1e3a5f;border-color:#3b82f6;color:#93c5fd}
+.cfbtn[data-k="NFP"].on,.cfbtn[data-k="EMPLOYMENT"].on{background:#14532d;border-color:#22c55e;color:#86efac}
+.cfbtn[data-k="ISM"].on,.cfbtn[data-k="GDP"].on,.cfbtn[data-k="RETAIL"].on{background:#422006;border-color:#f97316;color:#fdba74}
+.cfbtn[data-k="TRUMP"].on{background:#1c1917;border-color:#78716c;color:#d6d3d1}
+.cfbtn[data-k="EARNINGS"].on{background:#1e1b4b;border-color:#6366f1;color:#a5b4fc}
+.cfbtn[data-k="ALL"].on{background:#1e293b;border-color:#475569;color:#f1f5f9}
+
+/* Date group separator */
+.cal-day-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px 4px;color:#475569;font-size:11px;letter-spacing:.5px}
+.cal-day-hdr .cdl{flex:1;height:1px;background:var(--bdr)}
+.cal-day-hdr .cdt{white-space:nowrap;font-weight:600;color:#64748b}
+
+/* Event card grid */
+.cal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 10px 8px}
+@media(max-width:900px){.cal-grid{grid-template-columns:1fr}}
+
+/* Individual event card */
+.cal-card{background:rgba(255,255,255,.025);border-radius:6px;border:1px solid var(--bdr);padding:10px 12px;display:flex;flex-direction:column;gap:6px;transition:border-color .2s;position:relative}
+.cal-card:hover{border-color:#334155}
+.cal-card.past{opacity:.35;filter:saturate(0)}
+.cal-card.urgent{border-color:#ef444460;animation:urg-pulse 2s ease-in-out infinite}
+@keyframes urg-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.15)}50%{box-shadow:0 0 0 6px rgba(239,68,68,.0)}}
+
+.cal-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.cal-imp{font-size:13px;letter-spacing:1px;line-height:1}
+.cal-cat{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.5px}
+.cal-name{font-size:13px;color:var(--tw);line-height:1.35;font-weight:500}
+.cal-vals{display:flex;gap:10px;flex-wrap:wrap}
+.cv-box{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:48px}
+.cv-lbl{font-size:9px;color:#475569;letter-spacing:.5px;font-weight:600}
+.cv-val{font-size:13px;font-weight:700;color:#94a3b8}
+.cv-val.act-beat{color:#4ade80}
+.cv-val.act-miss{color:#f87171}
+.cv-val.act-val{color:#f1f5f9}
+.cv-val.fcst-val{color:#93c5fd}
+.cv-val.prev-val{color:#64748b}
+.cal-footer{display:flex;align-items:center;justify-content:space-between}
+.cal-time-txt{font-size:11px;color:#475569}
+
+/* Animated SVG clock */
+.clk-wrap{display:flex;align-items:center;gap:5px}
+.clk-svg{flex-shrink:0}
+.clk-label{font-size:11px;font-weight:600;min-width:36px;text-align:right}
+.clk-mhand{transform-box:fill-box;transform-origin:50% 100%}
+
 </style></head>
 <body>
 
@@ -360,8 +413,8 @@ th{position:relative}
 <div style="display:flex;flex-direction:column;gap:14px">
 <div class="pnl" style="flex:1">
 <div class="ph"><b>경제 캘린더</b><small id="cc"></small></div>
-<div class="desc">별 5개=최고 충격(FOMC/NFP). 4시간 전 신규진입 차단, 직후 2시간 시그널 강화.</div>
-<div class="pb" id="cb"></div>
+<div class="cal-fbar" id="cal-fbar"></div>
+<div class="pb" style="max-height:540px" id="cb"></div>
 </div>
 <div class="pnl">
 <div class="ph"><b>진입 제약</b></div>
@@ -436,6 +489,167 @@ const SRCS=[
 {n:'HedgeFollow',d:'헤지펀드 13F 추적',cy:'수동'},
 {n:'Fintel',d:'공매도 비율 (준비중)',cy:'-'}
 ];
+// ── 날짜/시간 공통 포맷 (전체 통일) ────────────────────────────
+// 모든 날짜: YYYY-MM-DD, 시각: HH:MM, 짧은날짜: MM-DD HH:MM
+function fmtDate(s){if(!s)return '';return String(s).substring(0,10)}
+function fmtTime(s){if(!s)return '';return String(s).substring(0,5)}
+function fmtDateTime(iso){
+  if(!iso||iso==='9999-12-31T23:59:59') return '';
+  const d=new Date(iso);
+  const mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+  const hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');
+  return `${mm}-${dd} ${hh}:${mi}`;
+}
+function fmtDayOfWeek(dateStr){
+  if(!dateStr) return '';
+  const days=['일','월','화','수','목','금','토'];
+  const d=new Date(dateStr+'T00:00:00Z');
+  return days[d.getUTCDay()]||'';
+}
+
+// ── 경제 캘린더 ──────────────────────────────────────────────────
+const CAL_CATS=[
+  {k:'ALL',v:'전체'},{k:'FOMC',v:'FOMC'},{k:'FED_SPEAK',v:'연준연설'},
+  {k:'PCE',v:'PCE'},{k:'CPI',v:'CPI'},{k:'NFP',v:'NFP'},
+  {k:'EMPLOYMENT',v:'고용'},{k:'GDP',v:'GDP'},{k:'ISM',v:'ISM'},
+  {k:'RETAIL',v:'소매판매'},{k:'TRUMP',v:'트럼프'},{k:'EARNINGS',v:'실적'},
+];
+const CAT_COLOR={
+  FOMC:'#ef4444',FED_SPEAK:'#a855f7',PCE:'#3b82f6',CPI:'#3b82f6',
+  NFP:'#22c55e',EMPLOYMENT:'#22c55e',GDP:'#f97316',ISM:'#f97316',
+  RETAIL:'#f97316',TRUMP:'#78716c',EARNINGS:'#6366f1',OTHER:'#475569',
+};
+// 중요도 이모지 (사용자 요청)
+const IMP_EMOJI=['','⚫','⚫⚫','🟡','🟠','🔴'];
+const IMP_COL=['','#475569','#64748b','#eab308','#f97316','#ef4444'];
+
+let calFilter='ALL';
+let _calInitialized=false;
+
+function initCalFilter(events){
+  if(_calInitialized) return;
+  _calInitialized=true;
+  const bar=document.getElementById('cal-fbar');
+  if(!bar) return;
+  const present=new Set((events||[]).map(e=>e.category||'OTHER'));
+  let h='';
+  for(const {k,v} of CAL_CATS){
+    if(k!=='ALL' && !present.has(k)) continue;
+    const c=k==='ALL'?'#475569':(CAT_COLOR[k]||'#475569');
+    h+=`<button class="cfbtn ${k===calFilter?'on':''}" data-k="${k}" onclick="setCalFilter('${k}')" style="--cc:${c}">${v}</button>`;
+  }
+  bar.innerHTML=h;
+}
+
+function setCalFilter(k){
+  calFilter=k;
+  document.querySelectorAll('.cfbtn').forEach(b=>{b.classList.toggle('on',b.dataset.k===k)});
+  if(window._lastCalEvents) renderCalendar(window._lastCalEvents);
+}
+
+// 원형 시계 SVG (회전하는 분침, 진행 링)
+function clockSvg(hu){
+  const isP=hu<0;
+  const color=isP?'#334155':hu<=1?'#ef4444':hu<=4?'#f97316':hu<=24?'#eab308':'#22c55e';
+  const maxH=72, pct=isP?1:Math.max(0,Math.min(1,1-hu/maxH));
+  const R=15,cx=18,cy=18,circ=2*Math.PI*R;
+  const dash=circ*pct, gap=circ*(1-pct);
+
+  // 분침 회전속도 — 급할수록 빠르게
+  const spinDur=isP?'999s':hu<1?'4s':hu<4?'12s':hu<24?'30s':'60s';
+
+  // 남은 시간 텍스트 (통일 형식)
+  const lbl=isP?'지남':hu<1?Math.round(hu*60)+'분':hu<24?hu.toFixed(1)+'h':Math.floor(hu/24)+'일';
+
+  return `<div class="clk-wrap">
+<svg class="clk-svg" viewBox="0 0 36 36" width="36" height="36">
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="#0d1322" stroke="#1e2d4a" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${color}" stroke-width="2.5"
+    stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}"
+    transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset .8s;opacity:.85"/>
+  <circle cx="${cx}" cy="${cy}" r="2" fill="${color}"/>
+  <line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy-9}" stroke="${color}" stroke-width="1.5" stroke-linecap="round" opacity=".7">
+    <animateTransform attributeName="transform" type="rotate"
+      from="0 ${cx} ${cy}" to="360 ${cx} ${cy}" dur="${spinDur}" repeatCount="indefinite"/>
+  </line>
+  <line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy-12}" stroke="${color}" stroke-width="1" stroke-linecap="round" opacity=".5">
+    <animateTransform attributeName="transform" type="rotate"
+      from="0 ${cx} ${cy}" to="360 ${cx} ${cy}" dur="3s" repeatCount="indefinite"/>
+  </line>
+</svg>
+<span class="clk-label" style="color:${color}">${lbl}</span>
+</div>`;
+}
+
+function fmtVal(v, unit){
+  if(v===null||v===undefined) return '–';
+  return (typeof v==='number'?v.toFixed(v%1===0?0:2):String(v))+(unit||'');
+}
+
+function renderCalendar(events){
+  window._lastCalEvents=events;
+  initCalFilter(events);
+  const filtered=calFilter==='ALL'?events:events.filter(e=>(e.category||'OTHER')===calFilter);
+
+  // 날짜별로 그룹핑
+  const byDate={};
+  for(const ev of filtered){
+    const d=fmtDate(ev.date)||'미정';
+    if(!byDate[d]) byDate[d]=[];
+    byDate[d].push(ev);
+  }
+  const dateKeys=Object.keys(byDate).sort();
+
+  let h='';
+  for(const dk of dateKeys){
+    const dow=fmtDayOfWeek(dk);
+    h+=`<div class="cal-day-hdr"><div class="cdl"></div><div class="cdt">${dk} (${dow})</div><div class="cdl"></div></div>`;
+    h+=`<div class="cal-grid">`;
+    for(const ev of byDate[dk]){
+      const ps=ev.status==='PAST';
+      const hu=ev.hours_until||0;
+      const urgent=!ps&&hu>=0&&hu<4;
+      const imp=ev.impact_level||1;
+      const impEm=IMP_EMOJI[imp]||'⚫';
+      const impCol=IMP_COL[imp]||'#475569';
+      const catCol=CAT_COLOR[ev.category||'OTHER']||'#475569';
+      const cat=ev.category||'OTHER';
+
+      // ACT / FCST / PREV 값
+      const unit=ev.unit||'';
+      const actV=ev.actual!==undefined&&ev.actual!==null;
+      const fcsV=ev.estimate!==undefined&&ev.estimate!==null;
+      const prvV=ev.prev!==undefined&&ev.prev!==null;
+
+      let actCls='cv-val act-val';
+      if(actV && fcsV){
+        actCls=ev.actual>ev.estimate?'cv-val act-beat':'cv-val act-miss';
+      }
+
+      const valHtml=`<div class="cal-vals">
+        <div class="cv-box"><div class="cv-lbl">ACT</div><div class="${actCls}">${actV?fmtVal(ev.actual,unit):'–'}</div></div>
+        <div class="cv-box"><div class="cv-lbl">FCST</div><div class="cv-val fcst-val">${fcsV?fmtVal(ev.estimate,unit):'–'}</div></div>
+        <div class="cv-box"><div class="cv-lbl">PREV</div><div class="cv-val prev-val">${prvV?fmtVal(ev.prev,unit):'–'}</div></div>
+      </div>`;
+
+      h+=`<div class="cal-card ${ps?'past':''} ${urgent?'urgent':''}">
+<div class="cal-card-top">
+  <span class="cal-imp" title="충격도 ${imp}">${impEm}</span>
+  <span class="cal-cat" style="background:${catCol}22;color:${catCol}">${cat}</span>
+</div>
+<div class="cal-name">${ev.event_name||''}</div>
+${valHtml}
+<div class="cal-footer">
+  <div class="cal-time-txt">${fmtDate(ev.date)} ${fmtTime(ev.time)} UTC</div>
+  ${clockSvg(hu)}
+</div>
+</div>`;
+    }
+    h+='</div>';
+  }
+  document.getElementById('cb').innerHTML=h||'<div style="padding:20px;color:var(--td)">해당 유형의 이벤트 없음</div>';
+}
+
 let ss={};
 const OPEN_SENTINEL='9999-12-31T23:59:59';
 let sigFilter='active';  // 활성만 | today | 3day | all
@@ -447,15 +661,6 @@ function setSigFilter(f){
   if(window._lastSignals) renderSignals(window._lastSignals);
 }
 
-function fmtDt(iso){
-  if(!iso||iso===OPEN_SENTINEL) return '';
-  const d=new Date(iso);
-  const mm=String(d.getMonth()+1).padStart(2,'0');
-  const dd=String(d.getDate()).padStart(2,'0');
-  const hh=String(d.getHours()).padStart(2,'0');
-  const mi=String(d.getMinutes()).padStart(2,'0');
-  return `${mm}-${dd} ${hh}:${mi}`;
-}
 
 function renderSignals(sigs){
   window._lastSignals=sigs;
@@ -484,7 +689,7 @@ function renderSignals(sigs){
     const isActive=(ea===OPEN_SENTINEL);
     const expBadge=isActive
       ?'<span class="bact">활성중</span>'
-      :`<span class="bexp" title="${ea}">${fmtDt(ea)}</span>`;
+      :`<span class="bexp" title="${ea}">${fmtDateTime(ea)}</span>`;
     const sect=s.sector||'';
     const ind=s.industry||'';
     sh+=`<tr>
@@ -496,7 +701,7 @@ function renderSignals(sigs){
 <td><span class="bx" style="background:${ac}18;color:${ac};font-size:11px">${s.axis_id||''}</span></td>
 <td class="r" data-v="${s.qty||1}">${s.qty||1}</td>
 <td class="r" data-v="${s.strength||0}">${(s.strength||0).toFixed(2)}</td>
-<td style="font-size:11px;color:var(--td)">${fmtDt(s.created_at||'')}</td>
+<td style="font-size:11px;color:var(--td)">${fmtDateTime(s.created_at||'')}</td>
 <td>${expBadge}</td>
 <td class="rsn" title="${(s.reason||'').replace(/"/g,'&quot;')}">${(s.reason||'').substring(0,50)}</td></tr>`}
   document.getElementById('sb').innerHTML=sh||'<tr><td colspan="11" style="color:var(--td);padding:20px;text-align:center">시그널 대기중...</td></tr>';
@@ -803,11 +1008,7 @@ document.getElementById('sc').textContent=(d.all_signals||[]).length+'건';
 
 const cl=d.calendar_events||[];
 document.getElementById('cc').textContent=cl.length+'건';
-let ch='';
-for(const c of cl){const ps=c.status==='PAST';const uc=!ps&&c.hours_until<4?'urg':'';
-ch+=`<div class="cr ${ps?'past':''}"><div><span class="st s${c.impact_level}">${'\u2605'.repeat(c.impact_level||1)}${'\u2606'.repeat(5-(c.impact_level||1))}</span> <span class="cn">${c.event_name||''}</span> <span class="cc">${c.category||''}</span></div>
-<div class="ct"><div>${c.date||''} ${c.time||''}</div><div class="cu ${uc}">${ps?'지남':(c.hours_until).toFixed(1)+'시간 후'}</div></div></div>`}
-document.getElementById('cb').innerHTML=ch||'<div style="padding:20px;color:var(--td)">예정된 이벤트 없음</div>';
+renderCalendar(cl);
 
 const con=d.constraint||{};let cx;
 if(con.constrained){const cc2=con.action==='BLOCK'?'#ef4444':con.action==='REDUCE'?'#f97316':'#eab308';

@@ -219,6 +219,10 @@ class EventCalendarState:
                 "time": ev.get("time", ""),
                 "hours_until": round(hours_until, 1),
                 "status": "PAST" if hours_until < 0 else "UPCOMING",
+                "actual":   ev.get("actual"),    # 실제값 (ACT)
+                "estimate": ev.get("estimate"),  # 예측값 (FORECAST)
+                "prev":     ev.get("prev"),       # 직전값 (PREV)
+                "unit":     ev.get("unit", ""),  # 단위 (%, K 등)
             })
         return result
 
