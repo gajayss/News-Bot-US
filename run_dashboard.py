@@ -1572,6 +1572,9 @@ def api_state():
         if config.NEWS_SOURCE_MODE == "sample":
             from news_bridge.sources.calendar_source import fetch_sample_calendar
             cal.load_events(fetch_sample_calendar())
+        else:
+            from news_bridge.sources.calendar_source import fetch_finnhub_calendar
+            cal.load_events(fetch_finnhub_calendar(config.FINNHUB_KEY, days_ahead=config.CALENDAR_DAYS_AHEAD))
         cal_events = cal.get_event_summary()
         constraint = cal.get_active_constraints()
     except Exception:

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+import calendar as _cal
 import os
+from datetime import date as _date
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+
+def _days_until_next_month_end() -> int:
+    """오늘부터 다음달 말일까지 남은 일수 (항시 자동 계산)."""
+    today = _date.today()
+    next_month = today.month % 12 + 1
+    next_year = today.year + (1 if today.month == 12 else 0)
+    last_day = _cal.monthrange(next_year, next_month)[1]
+    end_of_next_month = _date(next_year, next_month, last_day)
+    return (end_of_next_month - today).days + 1
 
 load_dotenv()
 
@@ -61,7 +73,9 @@ MAX_HOLD_DAYS = int(os.getenv("MAX_HOLD_DAYS", "10"))
 FEAR_REGIME = os.getenv("FEAR_REGIME", "false").lower() == "true"
 
 # --- Economic Calendar ---
-CALENDAR_DAYS_AHEAD = int(os.getenv("CALENDAR_DAYS_AHEAD", "7"))
+# 0 또는 미설정 시 → 다음달 말일까지 자동 계산 (항시 동적)
+_env_days = int(os.getenv("CALENDAR_DAYS_AHEAD", "0"))
+CALENDAR_DAYS_AHEAD = _env_days if _env_days > 0 else _days_until_next_month_end()
 PRE_EVENT_BLOCK_HOURS = float(os.getenv("PRE_EVENT_BLOCK_HOURS", "4.0"))
 POST_EVENT_BOOST_HOURS = float(os.getenv("POST_EVENT_BOOST_HOURS", "2.0"))
 

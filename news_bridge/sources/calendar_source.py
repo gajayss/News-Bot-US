@@ -75,111 +75,77 @@ def fetch_finnhub_calendar(api_key: str, days_ahead: int = 7) -> list[dict[str, 
 # -----------------------------------------------------------------------
 
 def fetch_sample_calendar() -> list[dict[str, Any]]:
-    """Return sample high-impact US economic events for testing."""
-    today = datetime.now(timezone.utc)
-    tomorrow = today + timedelta(days=1)
-    day2 = today + timedelta(days=2)
-    day3 = today + timedelta(days=3)
-    day5 = today + timedelta(days=5)
+    """Return sample high-impact US economic events — 다음달 말일까지 커버."""
+    import calendar as _cal
+    from datetime import date as _date
+
+    today_dt = datetime.now(timezone.utc)
 
     def _d(dt: datetime) -> str:
         return dt.strftime("%Y-%m-%d")
 
-    return [
-        {
-            "event_name": "FOMC Interest Rate Decision",
-            "country": "US",
-            "date": _d(tomorrow),
-            "time": "14:00",
-            "impact": "high",
-            "actual": None,
-            "estimate": 4.50,
-            "prev": 4.75,
-            "unit": "%",
-            "source": "sample",
-        },
-        {
-            "event_name": "Fed Chair Powell Press Conference",
-            "country": "US",
-            "date": _d(tomorrow),
-            "time": "14:30",
-            "impact": "high",
-            "actual": None,
-            "estimate": None,
-            "prev": None,
-            "unit": "",
-            "source": "sample",
-        },
-        {
-            "event_name": "Core PCE Price Index (MoM)",
-            "country": "US",
-            "date": _d(day2),
-            "time": "08:30",
-            "impact": "high",
-            "actual": None,
-            "estimate": 0.3,
-            "prev": 0.4,
-            "unit": "%",
-            "source": "sample",
-        },
-        {
-            "event_name": "Non-Farm Payrolls",
-            "country": "US",
-            "date": _d(day3),
-            "time": "08:30",
-            "impact": "high",
-            "actual": None,
-            "estimate": 185,
-            "prev": 227,
-            "unit": "K",
-            "source": "sample",
-        },
-        {
-            "event_name": "CPI (YoY)",
-            "country": "US",
-            "date": _d(day5),
-            "time": "08:30",
-            "impact": "high",
-            "actual": None,
-            "estimate": 2.8,
-            "prev": 2.9,
-            "unit": "%",
-            "source": "sample",
-        },
-        {
-            "event_name": "Fed Governor Waller Speaks",
-            "country": "US",
-            "date": _d(tomorrow),
-            "time": "10:00",
-            "impact": "medium",
-            "actual": None,
-            "estimate": None,
-            "prev": None,
-            "unit": "",
-            "source": "sample",
-        },
-        {
-            "event_name": "Initial Jobless Claims",
-            "country": "US",
-            "date": _d(day2),
-            "time": "08:30",
-            "impact": "medium",
-            "actual": None,
-            "estimate": 220,
-            "prev": 215,
-            "unit": "K",
-            "source": "sample",
-        },
-        {
-            "event_name": "ISM Manufacturing PMI",
-            "country": "US",
-            "date": _d(day3),
-            "time": "10:00",
-            "impact": "high",
-            "actual": None,
-            "estimate": 49.5,
-            "prev": 50.3,
-            "unit": "",
-            "source": "sample",
-        },
+    def _add(days: int) -> datetime:
+        return today_dt + timedelta(days=days)
+
+    # 다음달 말일 계산
+    today_date = today_dt.date()
+    next_month = today_date.month % 12 + 1
+    next_year = today_date.year + (1 if today_date.month == 12 else 0)
+    last_day = _cal.monthrange(next_year, next_month)[1]
+    next_month_end = datetime(next_year, next_month, last_day, 23, 59, tzinfo=timezone.utc)
+
+    # 고정 이벤트 목록 (날짜 상대 오프셋)
+    events = [
+        # --- 이번주 ---
+        {"event_name": "Fed Governor Waller Speaks",        "date": _d(_add(1)),  "time": "10:00", "impact": "medium", "estimate": None, "prev": None, "unit": ""},
+        {"event_name": "FOMC Interest Rate Decision",        "date": _d(_add(1)),  "time": "14:00", "impact": "high",   "estimate": 4.50, "prev": 4.75, "unit": "%"},
+        {"event_name": "Fed Chair Powell Press Conference",  "date": _d(_add(1)),  "time": "14:30", "impact": "high",   "estimate": None, "prev": None, "unit": ""},
+        {"event_name": "Core PCE Price Index (MoM)",         "date": _d(_add(2)),  "time": "08:30", "impact": "high",   "estimate": 0.30, "prev": 0.40, "unit": "%"},
+        {"event_name": "Initial Jobless Claims",             "date": _d(_add(2)),  "time": "08:30", "impact": "medium", "estimate": 220,  "prev": 215,  "unit": "K"},
+        {"event_name": "Non-Farm Payrolls",                  "date": _d(_add(3)),  "time": "08:30", "impact": "high",   "estimate": 185,  "prev": 227,  "unit": "K"},
+        {"event_name": "ISM Manufacturing PMI",              "date": _d(_add(3)),  "time": "10:00", "impact": "high",   "estimate": 49.5, "prev": 50.3, "unit": ""},
+        {"event_name": "CPI (YoY)",                          "date": _d(_add(5)),  "time": "08:30", "impact": "high",   "estimate": 2.80, "prev": 2.90, "unit": "%"},
+        # --- 다음달 주요 이벤트 ---
+        {"event_name": "Initial Jobless Claims",             "date": _d(_add(9)),  "time": "08:30", "impact": "medium", "estimate": 218,  "prev": 220,  "unit": "K"},
+        {"event_name": "PPI (MoM)",                          "date": _d(_add(10)), "time": "08:30", "impact": "high",   "estimate": 0.20, "prev": 0.10, "unit": "%"},
+        {"event_name": "Retail Sales (MoM)",                 "date": _d(_add(12)), "time": "08:30", "impact": "high",   "estimate": 0.30, "prev": -0.90,"unit": "%"},
+        {"event_name": "ISM Services PMI",                   "date": _d(_add(12)), "time": "10:00", "impact": "high",   "estimate": 53.0, "prev": 53.5, "unit": ""},
+        {"event_name": "Fed Beige Book",                     "date": _d(_add(14)), "time": "14:00", "impact": "medium", "estimate": None, "prev": None, "unit": ""},
+        {"event_name": "Initial Jobless Claims",             "date": _d(_add(16)), "time": "08:30", "impact": "medium", "estimate": 215,  "prev": 218,  "unit": "K"},
+        {"event_name": "Philadelphia Fed Manufacturing",     "date": _d(_add(16)), "time": "08:30", "impact": "medium", "estimate": 8.5,  "prev": 12.5, "unit": ""},
+        {"event_name": "Existing Home Sales",                "date": _d(_add(17)), "time": "10:00", "impact": "medium", "estimate": 3.95, "prev": 4.26, "unit": "M"},
+        {"event_name": "Fed Governor Bowman Speaks",         "date": _d(_add(19)), "time": "09:00", "impact": "medium", "estimate": None, "prev": None, "unit": ""},
+        {"event_name": "S&P Global Manufacturing PMI",       "date": _d(_add(21)), "time": "09:45", "impact": "medium", "estimate": 51.8, "prev": 52.5, "unit": ""},
+        {"event_name": "New Home Sales",                     "date": _d(_add(22)), "time": "10:00", "impact": "medium", "estimate": 680,  "prev": 657,  "unit": "K"},
+        {"event_name": "Durable Goods Orders (MoM)",         "date": _d(_add(23)), "time": "08:30", "impact": "high",   "estimate": 2.00, "prev": -1.10,"unit": "%"},
+        {"event_name": "Initial Jobless Claims",             "date": _d(_add(23)), "time": "08:30", "impact": "medium", "estimate": 216,  "prev": 215,  "unit": "K"},
+        {"event_name": "GDP (QoQ)",                          "date": _d(_add(24)), "time": "08:30", "impact": "high",   "estimate": 2.30, "prev": 2.40, "unit": "%"},
+        {"event_name": "Core PCE Price Index (MoM)",         "date": _d(_add(25)), "time": "08:30", "impact": "high",   "estimate": 0.30, "prev": 0.30, "unit": "%"},
+        {"event_name": "University of Michigan Sentiment",   "date": _d(_add(25)), "time": "10:00", "impact": "medium", "estimate": 57.0, "prev": 57.9, "unit": ""},
+        {"event_name": "Fed Chair Powell Speaks",            "date": _d(_add(27)), "time": "13:00", "impact": "high",   "estimate": None, "prev": None, "unit": ""},
+        {"event_name": "Non-Farm Payrolls",                  "date": _d(_add(32)), "time": "08:30", "impact": "high",   "estimate": 190,  "prev": 185,  "unit": "K"},
+        {"event_name": "ISM Manufacturing PMI",              "date": _d(_add(32)), "time": "10:00", "impact": "high",   "estimate": 49.8, "prev": 49.5, "unit": ""},
+        {"event_name": "FOMC Meeting Minutes",               "date": _d(_add(35)), "time": "14:00", "impact": "high",   "estimate": None, "prev": None, "unit": ""},
     ]
+
+    # 다음달 말일 이내 이벤트만 포함
+    result = []
+    for ev in events:
+        try:
+            ev_date = datetime.strptime(ev["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            if ev_date <= next_month_end:
+                result.append({
+                    "event_name": ev["event_name"],
+                    "country": "US",
+                    "date": ev["date"],
+                    "time": ev["time"],
+                    "impact": ev["impact"],
+                    "actual": None,
+                    "estimate": ev.get("estimate"),
+                    "prev": ev.get("prev"),
+                    "unit": ev.get("unit", ""),
+                    "source": "sample",
+                })
+        except ValueError:
+            continue
+    return result
