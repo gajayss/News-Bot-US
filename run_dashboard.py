@@ -7,14 +7,111 @@ from __future__ import annotations
 
 import json
 import time
+import threading
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
 from flask import Flask, render_template_string, jsonify
 
 import config
 from news_bridge.axes import AXES
 from news_bridge.event_calendar import EventCalendarState
+
+# ---------------------------------------------------------------------------
+# Regime 국면 엔진 (IBEX_US 로직 이식)
+# VIX × 0.40 + CNN F&G × 0.30 + QQQ 5일 slope × 0.30
+# ---------------------------------------------------------------------------
+_CBOE_VIX_URL = "https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json"
+_CNN_FNG_URL  = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
+_CNN_FNG_HDR  = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                 "Accept": "application/json, text/plain, */*"}
+
+_regime_cache: dict = {
+    "regime": "NORMAL", "direction": "LONG",
+    "vix": 0.0, "vix_grade": "—", "vix_grade_color": "#64748b",
+    "fng_score": 50.0, "fng_rating": "neutral",
+    "market_slope": 0.0, "composite": 1.0,
+    "last_updated": None, "stale": True,
+}
+_regime_lock   = threading.Lock()
+_regime_ts     = 0.0
+_REGIME_TTL    = 600  # 10분 캐시
+
+
+def _fetch_regime() -> dict:
+    global _regime_ts
+    if time.time() - _regime_ts < _REGIME_TTL:
+        return dict(_regime_cache)
+
+    vix = 0.0
+    fng_score, fng_rating = 50.0, "neutral"
+    slope = 0.0
+
+    # ── VIX (CBOE) ──────────────────────────────────────────────
+    try:
+        r = requests.get(_CBOE_VIX_URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        vix = float(r.json().get("data", {}).get("current_price", 0))
+    except Exception:
+        pass
+
+    # ── CNN Fear & Greed ─────────────────────────────────────────
+    try:
+        r = requests.get(_CNN_FNG_URL, headers=_CNN_FNG_HDR, timeout=8)
+        fg = r.json().get("fear_and_greed", {})
+        fng_score  = float(fg.get("score", 50))
+        fng_rating = str(fg.get("rating", "neutral")).lower()
+    except Exception:
+        pass
+
+    # ── QQQ 5일 Slope (Yahoo Finance) ────────────────────────────
+    try:
+        r = requests.get(
+            "https://query1.finance.yahoo.com/v8/finance/chart/QQQ?range=10d&interval=1d",
+            headers={"User-Agent": "Mozilla/5.0"}, timeout=8,
+        )
+        closes = r.json()["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+        closes = [c for c in closes if c is not None]
+        if len(closes) >= 6:
+            slope = round((closes[-1] - closes[-6]) / closes[-6] * 100, 2)
+    except Exception:
+        pass
+
+    # ── 위험 점수 → Composite ────────────────────────────────────
+    vix_s  = 0.0 if vix < 20 else 1.0 if vix < 25 else 2.0 if vix < 30 else 3.0
+    fng_s  = (0.0 if fng_score >= 75 else 0.5 if fng_score >= 55
+              else 1.0 if fng_score >= 45 else 2.0 if fng_score >= 25 else 3.0)
+    slp_s  = (0.0 if slope >= 2.0 else 1.0 if slope >= 0.0
+              else 2.0 if slope >= -2.0 else 3.0)
+    composite = round(vix_s * 0.40 + fng_s * 0.30 + slp_s * 0.30, 3)
+
+    # ── 국면 판정 ─────────────────────────────────────────────────
+    if   composite < 0.6:  regime, direction = "BULL",       "LONG"
+    elif composite < 1.2:  regime, direction = "NORMAL",     "LONG"
+    elif composite < 1.8:  regime, direction = "CAUTION",    "MIXED"
+    elif composite < 2.4:  regime, direction = "BEAR_WATCH", "SHORT"
+    else:                  regime, direction = "BEAR",        "SHORT"
+
+    # ── VIX 등급 ──────────────────────────────────────────────────
+    if   vix < 15: vg, vc = "SAFE",    "#22c55e"
+    elif vix < 18: vg, vc = "CALM",    "#86efac"
+    elif vix < 21: vg, vc = "CAUTION", "#f59e0b"
+    elif vix < 25: vg, vc = "WARN",    "#f97316"
+    elif vix < 30: vg, vc = "DANGER",  "#ef4444"
+    else:          vg, vc = "FEAR",    "#dc2626"
+
+    with _regime_lock:
+        _regime_cache.update({
+            "regime": regime, "direction": direction,
+            "vix": round(vix, 2), "vix_grade": vg, "vix_grade_color": vc,
+            "fng_score": round(fng_score, 1), "fng_rating": fng_rating,
+            "market_slope": slope, "composite": composite,
+            "last_updated": datetime.now(timezone.utc).strftime("%H:%M"),
+            "stale": vix <= 0,
+        })
+    _regime_ts = time.time()
+    return dict(_regime_cache)
 
 app = Flask(__name__)
 INTERFACE_DIR = config.INTERFACE_DIR
@@ -204,11 +301,22 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--t);font:17px/1.5 'Segoe UI',system-ui,sans-serif}
 
-.top{background:var(--hdr);padding:14px 32px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--bdr)}
-.top h1{font-size:20px;color:var(--tw)}
-.top .info{font-size:13px;color:var(--td);display:flex;gap:18px;align-items:center}
 .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;animation:p 2s infinite}
 @keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+/* Regime 게이지 위젯 */
+.rgm-wrap{display:flex;flex-direction:column;gap:6px;padding:10px 14px;min-width:210px;border-left:1px solid var(--bdr)}
+.rgm-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:6px;font:700 14px/1 inherit;letter-spacing:.5px;border:1px solid transparent}
+.rgm-badge.blink{animation:rgm-blink 1s infinite}
+@keyframes rgm-blink{0%,100%{opacity:1}50%{opacity:.4}}
+.rgm-dir{font-size:11px;color:var(--td);margin-top:2px}
+.rgm-row{display:flex;align-items:center;gap:8px;font-size:11px}
+.rgm-lbl{color:var(--td);min-width:38px}
+.rgm-bar-wrap{flex:1;height:6px;border-radius:3px;background:#1e2736;overflow:hidden;position:relative}
+.rgm-bar{height:100%;border-radius:3px;transition:width .6s ease}
+.rgm-val{min-width:36px;text-align:right;font-weight:600;font-size:11px}
+.rgm-ts{font-size:10px;color:#334155;text-align:right;margin-top:3px}
+/* VIX 반원 게이지 */
+.vix-svg{display:block;margin:0 auto}
 
 .wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 14px;margin:0}
 .fw{grid-column:1/-1}
@@ -372,21 +480,29 @@ th{position:relative}
 
 </style></head>
 <body>
-
-<div class="top">
-<h1>News Bot US - 뉴스 자동매매 시스템</h1>
-<div class="info"><span><span class="dot"></span> 실시간</span><span>{{ source_mode }}</span><span>{{ watchlist_count }}종목</span><span id="rt"></span></div>
-</div>
-
 <div class="wrap">
 
-<!-- Row 0: 5축 + 소스 + 통계 (full width) -->
+<!-- Row 0: 5축 + 소스 + 통계 + Regime 게이지 (full width) -->
 <div class="pnl fw">
-<div class="ph"><b>5축 뉴스 분류</b><small id="te"></small></div>
+<div class="ph">
+  <div style="display:flex;align-items:center;gap:10px">
+    <b>5축 뉴스 분류</b><small id="te"></small>
+    <span style="font-size:11px;color:var(--td)"><span class="dot"></span> {{ source_mode }} · {{ watchlist_count }}종목</span>
+    <span id="rt" style="font-size:11px;color:var(--td)"></span>
+  </div>
+</div>
 <div class="desc"><b>GOVERN</b>(정부/전쟁) > <b>FEDWALL</b>(연준/월가) > <b>ECONOMY</b>(경제지표) > <b>CORPORATE</b>(기업/내부자/헤지펀드) > <b>THEME</b>(테마/신기술) 순 우선순위</div>
-<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-<div class="axr" id="ab" style="flex:1"></div>
-<div class="stats" id="stb" style="flex:1"></div>
+<div style="display:flex;align-items:stretch;gap:0;flex-wrap:wrap">
+  <div style="flex:1;min-width:180px;padding:10px 16px">
+    <div class="axr" id="ab"></div>
+  </div>
+  <div style="flex:1;min-width:180px;padding:10px 16px;border-left:1px solid var(--bdr)">
+    <div class="stats" id="stb"></div>
+  </div>
+  <!-- Regime 게이지 위젯 -->
+  <div class="rgm-wrap" id="regime-widget">
+    <div style="font-size:11px;color:var(--td)">시장 국면 로딩중…</div>
+  </div>
 </div>
 <div class="src" id="srcb"></div>
 </div>
@@ -764,6 +880,110 @@ function buildRocMap(allSigs){
   return rocMap;
 }
 
+
+/* ================================================================
+ * renderRegime — 시장 국면 게이지 위젯
+ * IBEX_US RegimePanel 로직을 순수 SVG+HTML로 이식
+ * ================================================================ */
+const REGIME_CFG={
+  BULL:       {color:'#22c55e',bg:'#14532d',label:'BULL',       dir:'▲ LONG',  blink:false},
+  NORMAL:     {color:'#3b82f6',bg:'#1e3a5f',label:'NORMAL',     dir:'▲ LONG',  blink:false},
+  CAUTION:    {color:'#f59e0b',bg:'#713f12',label:'CAUTION',    dir:'↕ MIXED', blink:false},
+  BEAR_WATCH: {color:'#f97316',bg:'#431407',label:'BEAR_WATCH', dir:'▼ SHORT', blink:true},
+  BEAR:       {color:'#ef4444',bg:'#450a0a',label:'BEAR',       dir:'▼ SHORT', blink:true},
+};
+
+function vixGaugeSvg(vix){
+  // 반원 게이지 — VIX 0~50 → 0~180도
+  const W=170,H=95,cx=85,cy=80,R=62,rW=10;
+  const segs=[
+    {lo:0, hi:15, c:'#22c55e'},  // SAFE
+    {lo:15,hi:20, c:'#86efac'},  // CALM
+    {lo:20,hi:25, c:'#f59e0b'},  // CAUTION
+    {lo:25,hi:30, c:'#f97316'},  // WARN
+    {lo:30,hi:50, c:'#ef4444'},  // DANGER/FEAR
+  ];
+  function polarXY(deg,r){
+    const rad=(deg-180)*Math.PI/180;
+    return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)];
+  }
+  function arcPath(lo,hi){
+    const a0=(lo/50)*180, a1=(hi/50)*180;
+    const [x0,y0]=polarXY(a0,R), [x1,y1]=polarXY(a1,R);
+    const lf=a1-a0>90?1:0;
+    return `M${x0},${y0} A${R},${R} 0 ${lf},1 ${x1},${y1}`;
+  }
+  const clamped=Math.max(0,Math.min(50,vix||0));
+  const needleAng=(clamped/50)*180;
+  const [nx,ny]=polarXY(needleAng,R-4);
+  // 현재 VIX 색상
+  let nColor='#64748b';
+  if(clamped<15)nColor='#22c55e';
+  else if(clamped<18)nColor='#86efac';
+  else if(clamped<21)nColor='#f59e0b';
+  else if(clamped<25)nColor='#f97316';
+  else if(clamped<30)nColor='#ef4444';
+  else nColor='#dc2626';
+
+  const segPaths=segs.map(s=>`<path d="${arcPath(s.lo,s.hi)}" stroke="${s.c}" stroke-width="${rW}" fill="none"/>`).join('');
+  return `<svg class="vix-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <path d="${arcPath(0,50)}" stroke="#1e2736" stroke-width="${rW+2}" fill="none"/>
+  ${segPaths}
+  <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nColor}" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="${cx}" cy="${cy}" r="4" fill="${nColor}"/>
+  <text x="${cx}" y="${cy-12}" text-anchor="middle" fill="${nColor}" font-size="18" font-weight="700">${vix>0?vix.toFixed(1):'—'}</text>
+  <text x="${cx}" y="${cy+5}" text-anchor="middle" fill="#475569" font-size="10">VIX</text>
+  <text x="8"  y="${cy+14}" fill="#475569" font-size="9">0</text>
+  <text x="${W-14}" y="${cy+14}" fill="#475569" font-size="9">50</text>
+</svg>`;
+}
+
+function fngColor(s){
+  return s<25?'#ef4444':s<45?'#f97316':s<55?'#94a3b8':s<75?'#22c55e':'#10b981';
+}
+function fngLabel(r){
+  const m={'extreme fear':'극도공포','fear':'공포','neutral':'중립','greed':'탐욕','extreme greed':'극도탐욕'};
+  return m[r]||r;
+}
+
+function renderRegime(rm){
+  const cfg=REGIME_CFG[rm.regime]||REGIME_CFG.NORMAL;
+  const blinkCls=cfg.blink?'blink':'';
+  const fc=fngColor(rm.fng_score||50);
+  const compPct=Math.min((rm.composite||1)/3*100,100);
+  const slopeColor=(rm.market_slope||0)>=0?'#22c55e':'#ef4444';
+  const slopeStr=(rm.market_slope||0)>=0?'+':''+(rm.market_slope||0).toFixed(2)+'%';
+
+  document.getElementById('regime-widget').innerHTML=`
+  ${vixGaugeSvg(rm.vix||0)}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+    <span class="rgm-badge ${blinkCls}" style="background:${cfg.bg};color:${cfg.color};border-color:${cfg.color}40">
+      ${cfg.label}
+    </span>
+    <span class="rgm-dir" style="color:${cfg.color}">${cfg.dir}</span>
+  </div>
+  <div class="rgm-row" style="margin-top:6px">
+    <span class="rgm-lbl">F&G</span>
+    <div class="rgm-bar-wrap">
+      <div class="rgm-bar" style="width:${rm.fng_score||50}%;background:linear-gradient(to right,#ef4444,#f97316 25%,#94a3b8 50%,#22c55e 75%,#10b981)"></div>
+    </div>
+    <span class="rgm-val" style="color:${fc}">${(rm.fng_score||50).toFixed(0)}<span style="font-size:9px;color:var(--td);margin-left:2px">${fngLabel(rm.fng_rating||'')}</span></span>
+  </div>
+  <div class="rgm-row">
+    <span class="rgm-lbl">Risk</span>
+    <div class="rgm-bar-wrap">
+      <div class="rgm-bar" style="width:${compPct}%;background:linear-gradient(to right,#22c55e,#f59e0b 50%,#ef4444)"></div>
+    </div>
+    <span class="rgm-val" style="color:${cfg.color}">${(rm.composite||1).toFixed(2)}</span>
+  </div>
+  <div class="rgm-row">
+    <span class="rgm-lbl">QQQ</span>
+    <div class="rgm-bar-wrap" style="background:transparent">
+      <span style="font-size:11px;font-weight:700;color:${slopeColor}">${slopeStr} <span style="color:var(--td);font-weight:400">5일</span></span>
+    </div>
+    <span class="rgm-val" style="color:var(--td)">${rm.last_updated||'—'}</span>
+  </div>`;
+}
 
 function renderSignals(sigs){
   window._lastSignals=sigs;
@@ -1148,6 +1368,9 @@ const rrg=d.rrg_trails||[];
 document.getElementById('rrg_cnt').textContent=rrg.length+'종목';
 buildNewsRRG('rrg-plot', rrg);
 
+// Regime 게이지
+if(d.regime) renderRegime(d.regime);
+
 document.getElementById('rt').textContent=new Date().toLocaleTimeString()})
 .catch(e=>{document.getElementById('rt').textContent='Err: '+e.message})}
 
@@ -1198,6 +1421,12 @@ def api_state():
         cal_events = []
         constraint = {"constrained": False}
 
+    # Regime 국면 (10분 캐시)
+    try:
+        regime_data = _fetch_regime()
+    except Exception:
+        regime_data = dict(_regime_cache)
+
     return jsonify({
         "news_events": news_events[-100:],
         "stock_signals": stock_signals[-50:],
@@ -1207,6 +1436,7 @@ def api_state():
         "calendar_events": cal_events,
         "constraint": constraint,
         "rrg_trails": rrg_trails,
+        "regime": regime_data,
     })
 
 
